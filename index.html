@@ -273,6 +273,12 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
 .hist-row{background:#151A22;border:1px solid var(--line2);border-radius:12px;padding:13px 14px;cursor:pointer;}
 .hist-row-title{font-size:17px;font-weight:900;}
 .hist-row-sub{font-size:13px;color:var(--text3);margin-top:5px;line-height:1.45;}
+.row-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px;}
+.row-actions .mini-btn{min-height:38px;padding:8px 12px;font-size:13px;}
+.mini-btn.red{border-color:rgba(239,75,75,.55)!important;color:#fecaca!important;background:rgba(239,75,75,.12)!important;}
+.log-row.editable{grid-template-columns:54px 1fr auto;align-items:center;gap:8px;}
+.log-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end;}
+.log-actions .mini-btn{min-height:34px;padding:7px 10px;font-size:12px;}
 .edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .edit-grid .full{grid-column:1/-1;}
 
@@ -694,6 +700,8 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
       <button class="abtn ng" data-role="strength-fail" onclick="doSet(false)">✗ 未達</button>
     </div>
     <div class="quick-row">
+      <button class="qbtn" onclick="editLastSet()">直前セットを修正</button>
+      <button class="qbtn" onclick="deleteLastSet()">直前セットを削除</button>
       <button class="qbtn" onclick="addSamePart()">＋同じ部位の種目</button>
       <button class="qbtn" onclick="addOtherPart()">＋別部位</button>
     </div>
@@ -743,6 +751,8 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
     <button class="tbtn dk" onclick="adjT(30)">+30秒</button>
   </div>
   <div class="t-more">
+    <button class="qbtn" onclick="editLastSet()">直前セットを修正</button>
+    <button class="qbtn" onclick="deleteLastSet()">直前セットを削除</button>
     <button class="qbtn" onclick="addSamePart()">＋同じ部位の種目</button>
     <button class="qbtn" onclick="addOtherPart()">＋別部位</button>
   </div>
@@ -1223,6 +1233,7 @@ function renderExList(part){
   if(oth.length>0){var go=addST(list,'全種目');for(var i=0;i<oth.length;i++)addExCard(go,oth[i],part,false);}
   var aa=document.createElement('div');aa.className='add-area';
   aa.innerHTML='<button class="add-btn" onclick="showAE()">＋ 種目追加</button>'
+    +'<button class="add-btn" style="margin-top:10px;background:#151A22;border-color:var(--line2);color:var(--text);" onclick="showHistPart(\''+esc(part)+'\')">'+esc(part)+'の履歴を見る</button>'
     +'<div id="ae-inp" class="panel" style="display:none"><div class="panel-h">種目追加</div><div class="panel-b form-grid">'
     +'<div class="field full"><label>種目名</label><input class="add-inp" id="ae-val" type="text" placeholder="例: ケーブルローイング" autocomplete="off"></div>'
     +'<div class="field"><label>初期重量 kg</label><input class="add-inp" id="ae-w" type="number" step="0.5" inputmode="decimal" value="0"></div>'
@@ -1567,13 +1578,47 @@ function deleteWalkChange(idx){
   if(!confirm('この変更履歴を削除しますか？'))return;
   S.wk.changes.splice(idx,1);renderWalkChanges();saveWalk();
 }
+function setWalkContext(si,ei){
+  var ss=gS();if(!ss[si]||!ss[si].exercises||!ss[si].exercises[ei])return null;
+  var ex=ss[si].exercises[ei];S.part='有酸素';S.ex=ex.parent_name||ex.name||'ウォーキング';S.origEx=ex.original_name||S.ex;S.sess=ss[si];S.exE=ex;S.wk=normalizeWalkPrep(ex.cardio||newWalkData(S.ex));ex.type='walking';ex.cardio=S.wk;S.wkSi=si;S.wkEi=ei;return ex;
+}
 function openWalkRecord(si,ei){
-  var ss=gS();if(!ss[si]||!ss[si].exercises||!ss[si].exercises[ei])return;
-  var ex=ss[si].exercises[ei];S.part='有酸素';S.ex=ex.parent_name||ex.name||'ウォーキング';S.origEx=ex.original_name||S.ex;S.sess=ss[si];S.exE=ex;S.wk=normalizeWalkPrep(ex.cardio||newWalkData(S.ex));ex.type='walking';ex.cardio=S.wk;S.wkSi=si;S.wkEi=ei;
+  var ex=setWalkContext(si,ei);if(!ex)return;
   S.wkStartMs=S.wk.startTime?(Date.parse(S.wk.startTime)||Date.now()):0;S.wkElapsedAdd=S.wk.duration?S.wk.duration*60:0;S.wkPaused=true;
   if(S.wkIv){clearInterval(S.wkIv);S.wkIv=null;}
   renderWalk();show('swalk');updateWalkTimer();
   if(S.wk.endTime)showWalkFinish();
+}
+function openWalkEdit(si,ei,from){
+  var ex=setWalkContext(si,ei);if(!ex)return;S.recType='walk';S.recRef={si:si,ei:ei,from:from||'today'};
+  var c=S.wk||{};
+  var cps=(c.checkpoints||[]).map(function(cp){return '<button class="mini-btn" onclick="openCpEdit('+cp.timeMin+')">'+cp.timeMin+'分 '+(cp.heartRate||'-')+'</button>';}).join('');
+  document.getElementById('rec-title').textContent='ウォーキング記録を編集';
+  document.getElementById('rec-body').innerHTML='<div class="edit-grid">'
+    +'<div class="field"><label>合計時間 分</label><input id="walk-edit-min" type="number" inputmode="numeric" value="'+esc(c.duration||0)+'"></div>'
+    +'<div class="field"><label>距離 km</label><input id="walk-edit-dist" type="number" inputmode="decimal" step="0.01" value="'+esc(c.finalDistance||0)+'"></div>'
+    +'<div class="field"><label>消費 kcal</label><input id="walk-edit-cal" type="number" inputmode="numeric" value="'+esc(c.finalCalories||0)+'"></div>'
+    +'<div class="field full"><label>メモ</label><input id="walk-edit-memo" type="text" value="'+esc(c.memo||'')+'"></div>'
+    +'<div class="field full"><label>5分ごとの心拍</label><div class="row-actions">'+(cps||'<span style="color:var(--text3);font-size:13px;">記録なし</span>')+'</div></div>'
+    +'</div><div class="modal-actions"><button class="wide-btn dk" onclick="closeRec()">キャンセル</button><button class="wide-btn" onclick="saveWalkEdit()">保存</button></div>'
+    +'<button class="wide-btn red" style="margin-top:10px" onclick="deleteWalkRecord('+si+','+ei+',\''+(from||'today')+'\')">このウォーキング記録を削除</button>';
+  document.getElementById('rec-md').classList.add('on');
+}
+function saveWalkEdit(){
+  var r=S.recRef;if(!r||!S.wk)return;
+  S.wk.duration=parseInt(document.getElementById('walk-edit-min').value,10)||0;
+  S.wk.finalDistance=parseFloat(document.getElementById('walk-edit-dist').value)||0;
+  S.wk.finalCalories=parseInt(document.getElementById('walk-edit-cal').value,10)||0;
+  S.wk.memo=document.getElementById('walk-edit-memo').value||'';
+  S.wk.status=S.wk.endTime?'finished':S.wk.status;
+  saveWalk();closeRec();if(r.from==='today')showToday();else showHistExercise('有酸素','ウォーキング');showToast('ウォーキング記録を更新しました','info');
+}
+function deleteWalkRecord(si,ei,from){
+  var ss=gS(),ex=ss[si]&&ss[si].exercises&&ss[si].exercises[ei];if(!ex)return;
+  if(!confirm('このウォーキング記録を削除しますか？'))return;
+  ss[si].exercises.splice(ei,1);pS(ss);
+  if(S.exE===ex)clearActiveWalkingSession();
+  closeRec();if(from==='today')showToday();else showHistExercise('有酸素','ウォーキング');showToast('ウォーキング記録を削除しました','info');
 }
 
 // =====================================================
@@ -1626,15 +1671,21 @@ function renderLog(){
   var sets=S.exE.sets||[],lb=document.getElementById('lb'),lr=document.getElementById('lr');
   if(sets.length===0){lb.style.display='none';return;}
   lb.style.display='';lr.innerHTML='';
+  var ref=currentExerciseRef();
   for(var i=0;i<sets.length;i++){
-    var st=sets[i],row=document.createElement('div');row.className='log-row';
+    var st=sets[i],row=document.createElement('div');row.className='log-row editable';
     var memo=(st.variation||st.memo||'標準');
     var plan=(!st.achieved&&st.planned_reps&&st.planned_reps!==st.reps)?' / 予定'+st.planned_reps:'';
     row.innerHTML='<span style="font-size:14px;font-weight:600;color:#555;">Set'+st.order+'</span>'
       +'<span style="font-size:15px;">'+setDesc(S.part,st)+' '+esc(memo)+plan+'</span>'
-      +'<span style="font-size:16px;color:'+(st.achieved?'#22c55e':'#ef4444')+';">'+(st.achieved?'✓':'✗')+'</span>';
+      +'<span><span style="font-size:16px;color:'+(st.achieved?'#22c55e':'#ef4444')+';">'+(st.achieved?'✓':'✗')+'</span>'
+      +(ref?'<span class="log-actions"><button class="mini-btn" onclick="openSetEdit('+ref.si+','+ref.ei+','+i+',\'set\')">編集</button><button class="mini-btn red" onclick="deleteSetRecord('+ref.si+','+ref.ei+','+i+',\'set\')">削除</button></span>':'')+'</span>';
     lr.appendChild(row);
   }
+}
+function currentExerciseRef(){
+  var ss=gS();for(var si=0;si<ss.length;si++)for(var ei=0;ei<(ss[si].exercises||[]).length;ei++){var ex=ss[si].exercises[ei];if(ex===S.exE||(ex.part===S.part&&(ex.name===S.ex||ex.parent_name===S.ex)&&ss[si].date===toDay()))return{si:si,ei:ei};}
+  return null;
 }
 function aw(d){S.w=Math.max(0,parseFloat((S.w+d).toFixed(1)));document.getElementById('wv').textContent=fmt(S.w);}
 function ar(d){S.r=Math.max(1,S.r+d);document.getElementById('rv').textContent=S.r;}
@@ -2028,14 +2079,16 @@ function showToday(){
     var box=document.createElement('div');box.className='today-part';box.innerHTML='<div class="today-h">'+esc(part)+'</div>';
     for(var j=0;j<parts[part].length;j++){
       var ex=parts[part][j],todaySi=findSessionIndex(s.id,s.date),todayEi=findExerciseIndex(todaySi,ex);
-      var html='<div class="today-ex"><div class="today-ex-name"><span>'+esc(ex.parent_name||ex.name)+'</span><button class="mini-btn" onclick="'+(ex.type==='walking'||ex.cardio?'openWalkRecord('+todaySi+','+todayEi+')':'selEx(\''+esc(ex.part)+'\',\''+esc(ex.parent_name||ex.name)+'\')')+'">'+(ex.type==='walking'||ex.cardio?'編集/再開':'セット追加')+'</button></div>';
+      var html='<div class="today-ex"><div class="today-ex-name"><span>'+esc(ex.parent_name||ex.name)+'</span><span class="row-actions"><button class="mini-btn" onclick="'+(ex.type==='walking'||ex.cardio?'openWalkEdit('+todaySi+','+todayEi+',\'today\')':'selEx(\''+esc(ex.part)+'\',\''+esc(ex.parent_name||ex.name)+'\')')+'">'+(ex.type==='walking'||ex.cardio?'編集':'セット追加')+'</button>'
+        +(ex.type==='walking'||ex.cardio?'<button class="mini-btn red" onclick="deleteWalkRecord('+todaySi+','+todayEi+',\'today\')">削除</button>':'<button class="mini-btn" onclick="showHistExercise(\''+esc(ex.part)+'\',\''+esc(ex.parent_name||ex.name)+'\')">履歴</button><button class="mini-btn red" onclick="deleteExerciseRecord('+todaySi+','+todayEi+',\'today\')">種目削除</button>')+'</span></div>';
       if(ex.type==='walking'||ex.cardio){
         html+=walkTodayHtml(ex.cardio||{});
         html+='</div>';box.innerHTML+=html;continue;
       }
       for(var k=0;k<(ex.sets||[]).length;k++){
         var st=ex.sets[k],v=st.variation||st.memo||'標準',mark=st.achieved?'✓':'✗';
-        html+='<div class="today-set" onclick="openSetEdit('+todaySi+','+todayEi+','+k+',\'today\')" style="cursor:pointer"><div>'+st.order+'set</div><div>'+setDesc(ex.part,st)+' '+esc(v)+'</div><div style="color:'+(st.achieved?'#22c55e':'#ef4444')+'">'+mark+'</div></div>';
+        html+='<div class="today-set" style="cursor:pointer"><div>'+st.order+'set</div><div onclick="openSetEdit('+todaySi+','+todayEi+','+k+',\'today\')">'+setDesc(ex.part,st)+' '+esc(v)+'</div><div style="color:'+(st.achieved?'#22c55e':'#ef4444')+'">'+mark+'</div>'
+          +'<div class="row-actions" style="grid-column:1/-1"><button class="mini-btn" onclick="openSetEdit('+todaySi+','+todayEi+','+k+',\'today\')">編集</button><button class="mini-btn red" onclick="deleteSetRecord('+todaySi+','+todayEi+','+k+',\'today\')">削除</button></div></div>';
       }
       html+='</div>';box.innerHTML+=html;
     }
@@ -2120,7 +2173,7 @@ function showHist(){
 function histExerciseRow(sess,si,ex,ei){
   var d=document.createElement('div');d.className='hist-row';
   var name=ex.parent_name||ex.name,sub='';
-  if(ex.type==='walking'||ex.cardio){var c=ex.cardio||{};sub=(c.duration||0)+'分 / 距離 '+(c.finalDistance?fmt2(c.finalDistance):'-')+'km / 消費 '+(c.finalCalories||'-')+'kcal';d.onclick=function(){openWalkRecord(si,ei);};}
+  if(ex.type==='walking'||ex.cardio){var c=ex.cardio||{};sub=(c.duration||0)+'分 / 距離 '+(c.finalDistance?fmt2(c.finalDistance):'-')+'km / 消費 '+(c.finalCalories||'-')+'kcal';d.onclick=function(){openWalkEdit(si,ei,'hist');};}
   else{var sets=ex.sets||[];sub=sets.length+'セット';if(sets.length){var l=sets[sets.length-1];sub+=' / 最終 '+setDesc(ex.part,l)+' '+(l.achieved?'✓':'✗');}d.onclick=function(){showHistSets(si,ei);};}
   d.innerHTML='<div class="hist-row-title">'+esc(sess.date)+'　'+esc(ex.part)+' / '+esc(name)+'</div><div class="hist-row-sub">'+esc(sub)+'</div>';
   return d;
@@ -2144,9 +2197,9 @@ function showHistExercise(part,name){
 }
 function showHistSets(si,ei){
   var ss=gS(),sess=ss[si],ex=sess&&sess.exercises&&sess.exercises[ei];if(!ex)return;
-  var bd=document.getElementById('hist-bd');bd.innerHTML='<div class="sec-title"><button class="mini-btn" onclick="showHistExercise(\''+esc(ex.part)+'\',\''+esc(ex.parent_name||ex.name)+'\')">← 戻る</button> '+esc(sess.date)+' '+esc(ex.parent_name||ex.name)+'</div><div class="hist-list" id="hist-sets"></div>';
+  var bd=document.getElementById('hist-bd');bd.innerHTML='<div class="sec-title"><button class="mini-btn" onclick="showHistExercise(\''+esc(ex.part)+'\',\''+esc(ex.parent_name||ex.name)+'\')">← 戻る</button> '+esc(sess.date)+' '+esc(ex.parent_name||ex.name)+' <button class="mini-btn red" onclick="deleteExerciseRecord('+si+','+ei+',\'hist\')">種目削除</button></div><div class="hist-list" id="hist-sets"></div>';
   var list=document.getElementById('hist-sets'),sets=ex.sets||[];
-  for(var i=0;i<sets.length;i++){var st=sets[i],r=document.createElement('div');r.className='hist-row';r.innerHTML='<div class="hist-row-title">Set '+(st.order||i+1)+'　'+esc(setDesc(ex.part,st))+'　'+(st.achieved?'✓':'✗')+'</div><div class="hist-row-sub">予定 '+esc(st.planned_reps||'-')+' / '+esc(st.variation||st.memo||'標準')+'</div>';r.onclick=(function(k){return function(){openSetEdit(si,ei,k);};})(i);list.appendChild(r);}
+  for(var i=0;i<sets.length;i++){var st=sets[i],r=document.createElement('div');r.className='hist-row';r.innerHTML='<div class="hist-row-title">Set '+(st.order||i+1)+'　'+esc(setDesc(ex.part,st))+'　'+(st.achieved?'✓':'✗')+'</div><div class="hist-row-sub">予定 '+esc(st.planned_reps||'-')+' / '+esc(st.variation||st.memo||'標準')+'</div><div class="row-actions"><button class="mini-btn" onclick="openSetEdit('+si+','+ei+','+i+',\'hist\')">編集</button><button class="mini-btn red" onclick="deleteSetRecord('+si+','+ei+','+i+',\'hist\')">削除</button></div>';r.onclick=(function(k){return function(e){if(e.target.tagName==='BUTTON')return;openSetEdit(si,ei,k);};})(i);list.appendChild(r);}
   if(!sets.length)list.innerHTML='<div class="hist-row"><div class="hist-row-title">セット記録なし</div></div>';
   show('shist');
 }
@@ -2161,7 +2214,8 @@ function openSetEdit(si,ei,ki,from){
     +'<div class="field"><label>達成</label><button class="wide-btn dk" id="set-ach" onclick="toggleSetAch()">'+(st.achieved?'達成':'未達')+'</button></div>'
     +'<div class="field full"><label>バリエーション</label><input id="set-var" type="text" value="'+esc(st.variation||st.memo||'標準')+'"></div>'
     +'<div class="field full"><label>メモ</label><input id="set-memo" type="text" value="'+esc(st.memo||'')+'"></div>'
-    +'</div><div class="modal-actions"><button class="wide-btn dk" onclick="closeRec()">キャンセル</button><button class="wide-btn" onclick="saveSetEdit()">保存</button></div>';
+    +'</div><div class="modal-actions"><button class="wide-btn dk" onclick="closeRec()">キャンセル</button><button class="wide-btn" onclick="saveSetEdit()">保存</button></div>'
+    +'<button class="wide-btn red" style="margin-top:10px" onclick="deleteSetFromEdit()">このセットを削除</button>';
   document.getElementById('rec-md').classList.add('on');
 }
 function toggleSetAch(){var b=document.getElementById('set-ach');b.textContent=b.textContent==='達成'?'未達':'達成';}
@@ -2174,7 +2228,44 @@ function saveSetEdit(){
   st.achieved=document.getElementById('set-ach').textContent==='達成';
   st.variation=document.getElementById('set-var').value||'標準';
   st.memo=document.getElementById('set-memo').value||'';
-  pS(ss);closeRec();if(r.from==='today')showToday();else showHistSets(r.si,r.ei);
+  renumberSets(ex);pS(ss);syncCurrentAfterMutation(r.si,r.ei);closeRec();refreshAfterRecordMutation(r.from,r.si,r.ei);
+}
+function renumberSets(ex){var sets=(ex&&ex.sets)||[];for(var i=0;i<sets.length;i++)sets[i].order=i+1;}
+function syncCurrentAfterMutation(si,ei){var ss=gS();if(si>=0&&ss[si]&&ss[si].exercises&&ss[si].exercises[ei]&&S.exE&&ss[si].exercises[ei].part===S.part&&(ss[si].exercises[ei].name===S.ex||ss[si].exercises[ei].parent_name===S.ex))S.exE=ss[si].exercises[ei];}
+function refreshAfterRecordMutation(from,si,ei){
+  if(from==='today')showToday();
+  else if(from==='set'){renderSet();show('sset');}
+  else if(gS()[si]&&gS()[si].exercises&&gS()[si].exercises[ei])showHistSets(si,ei);
+  else showHist();
+  showToast('記録を更新しました','info');
+}
+function deleteSetFromEdit(){var r=S.recRef;if(!r)return;deleteSetRecord(r.si,r.ei,r.ki,r.from||'hist');}
+function deleteSetRecord(si,ei,ki,from){
+  var ss=gS(),ex=ss[si]&&ss[si].exercises&&ss[si].exercises[ei];if(!ex||!ex.sets||!ex.sets[ki])return;
+  if(!confirm('このセットを削除しますか？'))return;
+  ex.sets.splice(ki,1);renumberSets(ex);pS(ss);syncCurrentAfterMutation(si,ei);closeRec();refreshAfterRecordMutation(from,si,ei);
+}
+function deleteExerciseRecord(si,ei,from){
+  var ss=gS(),ex=ss[si]&&ss[si].exercises&&ss[si].exercises[ei];if(!ex)return;
+  var nm=ex.parent_name||ex.name;
+  if(!confirm('今日の'+nm+'の記録をすべて削除します。よろしいですか？'))return;
+  if(!confirm('本当に削除する'))return;
+  ss[si].exercises.splice(ei,1);pS(ss);closeRec();
+  if(S.exE===ex){S.exE=null;}
+  if(from==='today')showToday();else showHist();
+  showToast('種目記録を削除しました','info');
+}
+function editLastSet(){
+  var ref=currentExerciseRef();if(!ref)return;
+  var ss=gS(),ex=ss[ref.si]&&ss[ref.si].exercises&&ss[ref.si].exercises[ref.ei],sets=ex&&ex.sets||[];
+  if(!sets.length){alert('修正できるセットがありません');return;}
+  openSetEdit(ref.si,ref.ei,sets.length-1,'set');
+}
+function deleteLastSet(){
+  var ref=currentExerciseRef();if(!ref)return;
+  var ss=gS(),ex=ss[ref.si]&&ss[ref.si].exercises&&ss[ref.si].exercises[ref.ei],sets=ex&&ex.sets||[];
+  if(!sets.length){alert('削除できるセットがありません');return;}
+  deleteSetRecord(ref.si,ref.ei,sets.length-1,'set');
 }
 
 // =====================================================
