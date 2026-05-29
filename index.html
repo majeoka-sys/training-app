@@ -72,6 +72,8 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
 .summary-parts{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px;position:relative;z-index:1;}
 .summary-chip{padding:6px 10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:999px;color:var(--text);font-size:12px;font-weight:800;}
 .app-version{padding:0 18px 8px;color:var(--text3);font-size:11px;font-weight:900;letter-spacing:.08em;}
+.backup-warn{display:none;margin:0 16px 10px;padding:10px 12px;border:1px solid rgba(245,158,11,.45);background:rgba(245,158,11,.1);border-radius:12px;color:#FBD38D;font-size:13px;font-weight:900;}
+.backup-warn.on{display:block;}
 .home-sec{padding:12px 18px 10px;display:flex;align-items:center;gap:10px;color:var(--text3);font-size:11px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;}
 .home-sec:before{content:"";width:18px;height:2px;border-radius:2px;background:linear-gradient(135deg,var(--blue),var(--cyan));}
 .home-sec:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(255,255,255,.1),transparent);}
@@ -323,6 +325,14 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
   background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.32);
   color:#DDFBFF;font-size:17px;font-weight:900;text-align:center;font-variant-numeric:tabular-nums;}
 .post-wait.on{display:block;}
+.prev-compare{margin-top:10px;padding:9px 11px;border-radius:10px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);font-size:13px;color:var(--text2);font-weight:800;}
+.prev-compare .up{color:var(--green);}.prev-compare .down{color:var(--red);}.prev-compare .same{color:var(--text3);}
+.summary-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:16px;}
+.summary-box{background:#151A22;border:1px solid var(--line2);border-radius:14px;padding:14px;}
+.summary-box .k{font-size:12px;color:var(--text3);font-weight:900;letter-spacing:.08em;text-transform:uppercase;}
+.summary-box .v{font-size:28px;color:var(--text);font-weight:900;margin-top:6px;}
+.summary-memo{margin:0 16px 16px;background:#151A22;border:1px solid var(--line2);border-radius:14px;padding:14px;}
+.summary-memo textarea{width:100%;min-height:88px;background:#0B0F14;border:1px solid var(--line2);border-radius:10px;color:var(--text);font-size:16px;padding:12px;resize:vertical;}
 
 /* PR Toast */
 #pr-toast{position:fixed;top:calc(20px + var(--safe-t));left:50%;
@@ -538,10 +548,12 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
     <div class="date-bar"><div class="dt" id="h-dt"></div><div class="si" id="h-si"></div></div>
     <div class="summary-card" id="h-sum"></div>
   </div>
-  <div class="app-version">UI v3.6 timer-return-fix</div>
+  <div class="app-version">UI v3.8 sync-helper</div>
+  <div class="backup-warn" id="home-backup-warn">バックアップから7日以上経っています</div>
   <div class="scroll"><div class="home-sec">Body Parts</div><div class="parts-stack" id="h-pg"></div></div>
   <div class="bot-bar">
     <button class="bot-btn" onclick="showToday()">📝 今日</button>
+    <button class="bot-btn" onclick="showDailySummary()">✅ 終了</button>
     <button class="bot-btn" onclick="showHist()">📋 履歴</button>
     <button class="bot-btn" onclick="showPR()">🏆 PR</button>
     <button class="bot-btn" onclick="showSet2()">⚙️ 設定</button>
@@ -658,6 +670,7 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
         </div>
       </div>
       <div class="post-wait" id="post-wait">休憩終了後 0:00</div>
+      <div class="prev-compare" id="prev-compare">前回同種目: -</div>
     </div>
   </div>
   <div class="scroll" id="set-scroll">
@@ -788,9 +801,18 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
   <div class="scroll" id="today-bd"></div>
   <div class="bot-bar">
     <button class="bot-btn" onclick="resumeLast()">直前に戻る</button>
+    <button class="bot-btn" onclick="showDailySummary()">終了</button>
     <button class="bot-btn" onclick="addSamePart()">同じ部位</button>
     <button class="bot-btn" onclick="addOtherPart()">別部位</button>
   </div>
+</div>
+<!-- DAILY SUMMARY -->
+<div id="ssummary" class="screen">
+  <div class="hdr">
+    <button class="hdr-back" onclick="showToday()">← 戻る</button>
+    <div class="hdr-title">今日のまとめ</div><div class="hdr-r"></div>
+  </div>
+  <div class="scroll" id="summary-bd"></div>
 </div>
 <!-- END MENU -->
 <div id="send" class="screen">
@@ -800,7 +822,7 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
       <button class="wide-btn" onclick="addSamePart()">同じ部位の種目を追加</button>
       <button class="wide-btn" onclick="addOtherPart()">別部位を追加</button>
       <button class="wide-btn dk" onclick="showToday()">今日の記録を見る</button>
-      <button class="wide-btn gold" onclick="finishTraining()">トレーニング終了</button>
+      <button class="wide-btn gold" onclick="showDailySummary()">今日のトレーニング終了</button>
     </div>
   </div>
 </div>
@@ -827,10 +849,20 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
     <div class="hdr-title">設定</div><div class="hdr-r"></div>
   </div>
   <div class="scroll"><div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
-    <button onclick="expData()" style="padding:16px;background:#1a1a1a;border:1px solid #333;border-radius:14px;color:#f0f0f0;font-size:16px;cursor:pointer;text-align:left;">📤 データをエクスポート</button>
-    <button onclick="impData()" style="padding:16px;background:#1a1a1a;border:1px solid #333;border-radius:14px;color:#f0f0f0;font-size:16px;cursor:pointer;text-align:left;">📥 データをインポート</button>
+    <div class="panel">
+      <div class="panel-h">端末・同期</div>
+      <div class="panel-b form-grid">
+        <div class="field full"><label>この端末名</label><input id="device-name" type="text" placeholder="iPad mini / iPhone / Mac" onblur="saveDeviceName()"></div>
+        <div class="field full"><button class="wide-btn dk" onclick="saveDeviceName()">端末名を保存</button></div>
+      </div>
+    </div>
+    <button onclick="expData()" style="padding:16px;background:#1a1a1a;border:1px solid #333;border-radius:14px;color:#f0f0f0;font-size:16px;cursor:pointer;text-align:left;">📤 バックアップを書き出す</button>
+    <button onclick="impData('merge')" style="padding:16px;background:#1a1a1a;border:1px solid #22d3ee;border-radius:14px;color:#eafbff;font-size:16px;cursor:pointer;text-align:left;">🔀 結合インポート</button>
+    <button onclick="impData('replace')" style="padding:16px;background:#1a1a1a;border:1px solid #ef4444;border-radius:14px;color:#fecaca;font-size:16px;cursor:pointer;text-align:left;">⚠️ 上書きインポート</button>
     <button onclick="togAutoNext()" id="auto-next-btn" style="padding:16px;background:#1a1a1a;border:1px solid #333;border-radius:14px;color:#f0f0f0;font-size:16px;cursor:pointer;text-align:left;">⏱ 自動で次セットへ戻る: ON</button>
     <button onclick="togDebug()" id="debug-btn" style="padding:16px;background:#1a1a1a;border:1px solid #333;border-radius:14px;color:#f0f0f0;font-size:16px;cursor:pointer;text-align:left;">🧪 デバッグログ: OFF</button>
+    <div id="backup-info" style="padding:14px;background:#1a1a1a;border-radius:14px;border:1px solid #333;font-size:14px;color:#aaa;line-height:1.7;"></div>
+    <div id="import-review" style="display:none;padding:14px;background:#151a22;border-radius:14px;border:1px solid #2e3a4a;font-size:14px;color:#dbeafe;line-height:1.7;"></div>
     <button onclick="resetActiveWalking()" style="padding:16px;background:#1a1a1a;border:1px solid #22d3ee;border-radius:14px;color:#eafbff;font-size:16px;cursor:pointer;text-align:left;">🚶 進行中ウォーキングをリセット</button>
     <div class="panel">
       <div class="panel-h">ウォーキング初期値</div>
@@ -847,7 +879,8 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
     <div style="padding:14px;background:#1a1a1a;border-radius:14px;border:1px solid #333;font-size:13px;color:#555;line-height:1.9;">
       💡 iPad Safari で「ホーム画面に追加」するとフルスクリーンで使えます<br>
       🔒 ジム中は画面自動ロックを「なし」に設定することをおすすめします<br>
-      💾 週1回データエクスポートのバックアップ推奨
+      💾 週1回データエクスポートのバックアップ推奨<br>
+      🔁 このアプリは自動同期ではありません。スマホとiPad miniで使う場合は、片方でエクスポートし、もう片方で結合インポートしてください。
     </div>
     <div id="st-stats" style="padding:14px;background:#1a1a1a;border-radius:14px;border:1px solid #333;font-size:13px;color:#555;line-height:1.9;"></div>
   </div></div>
@@ -929,6 +962,19 @@ function gCFG(){try{var d=localStorage.getItem('cfg');return d?JSON.parse(d):{};
 function pCFG(o){try{localStorage.setItem('cfg',JSON.stringify(o));}catch(e){}}
 function isAutoNext(){var c=gCFG();return c.auto_next!==false;}
 function setAutoNext(v){var c=gCFG();c.auto_next=!!v;pCFG(c);}
+function backupDays(){
+  var c=gCFG(),d=c.last_export;if(!d)return 999;
+  var diff=Math.floor((new Date(toDay())-new Date(String(d).slice(0,10)))/864e5);
+  return isNaN(diff)?999:Math.max(0,diff);
+}
+function backupLabel(){
+  var c=gCFG(),d=c.last_export;if(!d)return '最終バックアップ: 未実施';
+  var days=backupDays();
+  return '最終バックアップ: '+String(d).slice(0,10)+'（'+(days===0?'今日':days+'日前')+'）';
+}
+function deviceName(){var c=gCFG();return c.device_name||'未設定の端末';}
+function safeDeviceName(){return deviceName().replace(/[^\wぁ-んァ-ヶ一-龠ー-]+/g,'-').replace(/^-+|-+$/g,'')||'device';}
+function nowStamp(){var d=new Date();return d.getFullYear()+p2(d.getMonth()+1)+p2(d.getDate())+'_'+p2(d.getHours())+p2(d.getMinutes());}
 
 // =====================================================
 // HELPERS
@@ -1083,6 +1129,24 @@ function getPrevAny(part,name){
   for(var i=0;i<names.length;i++){pv=getPrev(part,names[i]);if(pv.w>0)return pv;}
   return best;
 }
+function getPrevExerciseRecord(part,name){
+  var ss=gS(),names=aliasesFor(part,name),td=toDay();
+  for(var i=ss.length-1;i>=0;i--){
+    var s=ss[i];if(s.date===td)continue;
+    for(var j=(s.exercises||[]).length-1;j>=0;j--){
+      var ex=s.exercises[j],pn=ex.parent_name||parentName(ex.part,ex.name);
+      if(ex.part===part&&(names.indexOf(ex.name)>=0||names.indexOf(pn)>=0)&&ex.sets&&ex.sets.length)return ex;
+    }
+  }
+  return null;
+}
+function prevSetCompareHtml(part,name,nextOrder,w,r){
+  var ex=getPrevExerciseRecord(part,name);if(!ex||!ex.sets)return '前回同種目: 記録なし';
+  var st=ex.sets[Math.max(0,Math.min(nextOrder-1,ex.sets.length-1))]||ex.sets[ex.sets.length-1];
+  var dw=(parseFloat(w)||0)-(parseFloat(st.weight_kg)||0),dr=(parseInt(r,10)||0)-(parseInt(st.reps,10)||0);
+  var cls=dw>0?'up':(dw<0?'down':'same'),mark=dw>0?'↗':(dw<0?'↘':'→');
+  return '前回'+(st.order||nextOrder)+'set: '+fmt(st.weight_kg||0)+'kg × '+rep(st.reps)+' <span class="'+cls+'">'+mark+' '+(dw===0?'同重量':(dw>0?'+':'')+fmt(dw)+'kg')+'</span>'+(dr!==0?' / レップ '+(dr>0?'+':'')+dr:'');
+}
 
 // =====================================================
 // AUDIO
@@ -1177,6 +1241,8 @@ function renderHome(){
     +'<div class="summary-stat"><div class="summary-num">'+todayEx+'<small>ex</small></div><div class="summary-k">Exercise</div></div>'
     +'<div class="summary-stat"><div class="summary-num">'+elapsed+'<small>min</small></div><div class="summary-k">Elapsed</div></div>'
     +'</div><div class="summary-parts">'+(todayParts.length?todayParts.map(function(p){return'<span class="summary-chip">'+esc(p)+'</span>';}).join(''):'<span class="summary-chip">今日の部位を選択</span>')+'</div>';
+  var bw=document.getElementById('home-backup-warn');
+  if(bw){var bd=backupDays(),never=bd>=999;bw.classList.toggle('on',bd>=7);bw.textContent=never?'まだバックアップがありません。設定からエクスポート推奨':'バックアップから'+bd+'日経っています。設定からエクスポート推奨';}
 
   var pL={},pC={},cut=new Date();cut.setDate(cut.getDate()-30);
   var ss=gS();
@@ -1659,6 +1725,8 @@ function renderSet(){
   document.getElementById('s-pr').textContent=pr>0?fmt(pr)+'kg':'-';
   document.getElementById('s-int').textContent=secLbl(intSec);
   document.getElementById('s-today').textContent=sets.length+'set';
+  var pc=document.getElementById('prev-compare');
+  if(pc)pc.innerHTML=prevSetCompareHtml(S.part,S.ex,sets.length+1,S.w,S.r);
   var vl=getVariants(S.part,S.ex),vb=document.getElementById('vb');
   if(vl){vb.style.display='';var vc=document.getElementById('vcs');vc.innerHTML='';
     for(var i=0;i<vl.length;i++){(function(v){var c=document.createElement('div');c.className='vc'+(v===S.vari?' sel':'');c.textContent=v;c.onclick=function(){S.vari=v;renderSet();};vc.appendChild(c);})(vl[i]);}
@@ -1687,8 +1755,8 @@ function currentExerciseRef(){
   var ss=gS();for(var si=0;si<ss.length;si++)for(var ei=0;ei<(ss[si].exercises||[]).length;ei++){var ex=ss[si].exercises[ei];if(ex===S.exE||(ex.part===S.part&&(ex.name===S.ex||ex.parent_name===S.ex)&&ss[si].date===toDay()))return{si:si,ei:ei};}
   return null;
 }
-function aw(d){S.w=Math.max(0,parseFloat((S.w+d).toFixed(1)));document.getElementById('wv').textContent=fmt(S.w);}
-function ar(d){S.r=Math.max(1,S.r+d);document.getElementById('rv').textContent=S.r;}
+function aw(d){S.w=Math.max(0,parseFloat((S.w+d).toFixed(1)));document.getElementById('wv').textContent=fmt(S.w);var pc=document.getElementById('prev-compare');if(pc&&S.exE)pc.innerHTML=prevSetCompareHtml(S.part,S.ex,(S.exE.sets||[]).length+1,S.w,S.r);}
+function ar(d){S.r=Math.max(1,S.r+d);document.getElementById('rv').textContent=S.r;var pc=document.getElementById('prev-compare');if(pc&&S.exE)pc.innerHTML=prevSetCompareHtml(S.part,S.ex,(S.exE.sets||[]).length+1,S.w,S.r);}
 function postWaitText(sec){sec=Math.max(0,Math.floor(sec||0));return Math.floor(sec/60)+':'+p2(sec%60);}
 function updatePostIntervalDisplay(){
   var el=document.getElementById('post-wait');if(!el)return;
@@ -1812,7 +1880,7 @@ function saveStrengthSetDirect(ach,actualReps){
   if(ei<0){ss[si].exercises.push({part:S.part,name:S.ex,parent_name:S.ex,original_name:S.origEx||S.ex,sets:[]});ei=ss[si].exercises.length-1;}
   var ex=ss[si].exercises[ei];ex.parent_name=S.ex;ex.original_name=ex.original_name||S.origEx||S.ex;ex.sets=ex.sets||[];
   var bestBefore=ach?bestForNames(S.part,aliasesFor(S.part,S.ex)):0;
-  var savedSet={order:ex.sets.length+1,part:S.part,exercise:S.ex,weight_kg:S.w,reps:actualReps,planned_reps:S.r,achieved:ach,rest_seconds:0,post_interval_elapsed_sec:S.lastPostWait||0,
+  var savedSet={order:ex.sets.length+1,part:S.part,exercise:S.ex,weight_kg:S.w,reps:actualReps,planned_reps:S.r,achieved:ach,pr_updated:!!(ach&&Number(S.w)>Number(bestBefore||0)),rest_seconds:0,post_interval_elapsed_sec:S.lastPostWait||0,
     memo:S.vari!=='標準'?S.vari:'',variation:S.vari,parent_name:S.ex,original_name:S.origEx||S.ex,performed_at:new Date().toISOString()};
   ex.sets.push(savedSet);
   pS(ss);S.sess=ss[si];S.exE=ex;
@@ -1922,7 +1990,7 @@ function saveSet(ach,actualReps){
   ss[si].exercises[ei].original_name=ss[si].exercises[ei].original_name||S.origEx||S.ex;
   var sets=ss[si].exercises[ei].sets;
   var bestBefore=ach?bestForNames(S.part,aliasesFor(S.part,S.ex)):0;
-  var savedSet={order:sets.length+1,part:S.part,exercise:S.ex,weight_kg:S.w,reps:actualReps,planned_reps:S.r,achieved:ach,rest_seconds:0,post_interval_elapsed_sec:S.lastPostWait||0,
+  var savedSet={order:sets.length+1,part:S.part,exercise:S.ex,weight_kg:S.w,reps:actualReps,planned_reps:S.r,achieved:ach,pr_updated:!!(ach&&Number(S.w)>Number(bestBefore||0)),rest_seconds:0,post_interval_elapsed_sec:S.lastPostWait||0,
     memo:S.vari!=='標準'?S.vari:'',variation:S.vari,parent_name:S.ex,original_name:S.origEx||S.ex,performed_at:new Date().toISOString()};
   sets.push(savedSet);
   pS(ss);dbg('set saved order='+(sets.length));S.exE=ss[si].exercises[ei];S.sess=ss[si];
@@ -2053,6 +2121,49 @@ function endEx(){
 function addSamePart(){if(S.tIv||S.tAutoTo){saveRest();stopTimer();}if(S.postActive)stopPostIntervalStopwatch();if(S.part){renderExList(S.part);show('sex');}else goHome();}
 function addOtherPart(){if(S.tIv||S.tAutoTo){saveRest();stopTimer();}if(S.postActive)stopPostIntervalStopwatch();goHome();}
 function finishTraining(){var ss=gS(),td=toDay();for(var i=0;i<ss.length;i++)if(ss[i].date===td){ss[i].ended_at=new Date().toISOString();break;}pS(ss);goHome();}
+function markTodayEnded(){var ss=gS(),td=toDay();for(var i=0;i<ss.length;i++)if(ss[i].date===td){ss[i].ended_at=new Date().toISOString();break;}pS(ss);}
+function dailyMemo(){var c=gCFG(),m=c.daily_memos||{};return m[toDay()]||'';}
+function saveDailySummaryMemo(){
+  var c=gCFG();c.daily_memos=c.daily_memos||{};
+  c.daily_memos[toDay()]=document.getElementById('summary-memo').value||'';
+  pCFG(c);showToast('今日のメモを保存しました','success');renderHome();
+}
+function todaySummaryData(){
+  var s=getTodSess(),d={sets:0,parts:[],exerciseCount:0,cardioMin:0,walkKm:0,cal:0,prs:0},seen={};
+  if(!s)return d;
+  var exs=s.exercises||[];d.exerciseCount=exs.length;
+  for(var i=0;i<exs.length;i++){
+    var ex=exs[i],part=ex.part||'',isWalk=ex.type==='walking'||!!ex.cardio;
+    if(part&&!seen[part]){seen[part]=1;d.parts.push(part);}
+    if(isWalk){
+      var c=ex.cardio||{};
+      d.cardioMin+=Number(c.duration||0)||0;
+      d.walkKm+=Number(c.finalDistance||0)||0;
+      d.cal+=Number(c.finalCalories||0)||0;
+    }else{
+      var sets=ex.sets||[];
+      d.sets+=sets.length;
+      for(var j=0;j<sets.length;j++)if(sets[j].pr_updated)d.prs++;
+    }
+  }
+  return d;
+}
+function showDailySummary(){
+  markTodayEnded();
+  var d=todaySummaryData(),bd=document.getElementById('summary-bd');
+  var partTxt=d.parts.length?d.parts.map(function(p){return'<span class="summary-chip">'+esc(p)+'</span>';}).join(''):'<span class="summary-chip">記録なし</span>';
+  bd.innerHTML='<div class="summary-grid2">'
+    +'<div class="summary-box"><div class="k">筋トレ合計</div><div class="v">'+d.sets+' set</div></div>'
+    +'<div class="summary-box"><div class="k">種目数</div><div class="v">'+d.exerciseCount+'</div></div>'
+    +'<div class="summary-box"><div class="k">有酸素時間</div><div class="v">'+d.cardioMin+' 分</div></div>'
+    +'<div class="summary-box"><div class="k">ウォーキング距離</div><div class="v">'+fmt2(d.walkKm)+' km</div></div>'
+    +'<div class="summary-box"><div class="k">消費カロリー</div><div class="v">'+d.cal+' kcal</div></div>'
+    +'<div class="summary-box"><div class="k">PR更新</div><div class="v">'+d.prs+'</div></div>'
+    +'</div><div class="summary-memo"><div class="k" style="color:var(--text3);font-weight:900;margin-bottom:8px;">今日行った部位</div><div class="summary-parts">'+partTxt+'</div></div>'
+    +'<div class="summary-memo"><div class="k" style="color:var(--text3);font-weight:900;margin-bottom:8px;">メモ</div><textarea id="summary-memo" placeholder="今日の体調、良かった点、次回メモ">'+esc(dailyMemo())+'</textarea><button class="wide-btn" style="margin-top:10px" onclick="saveDailySummaryMemo()">メモを保存</button></div>'
+    +'<div class="end-grid" style="padding:0 16px 24px"><button class="wide-btn dk" onclick="showToday()">今日の記録を見る</button><button class="wide-btn dk" onclick="goHome()">ホームへ戻る</button><button class="wide-btn dk" onclick="showSet2()">バックアップ/設定</button></div>';
+  show('ssummary');
+}
 function resumeLast(){var s=getTodSess();if(!s||!(s.exercises||[]).length){goHome();return;}var ex=s.exercises[s.exercises.length-1];selEx(ex.part,ex.parent_name||ex.name);}
 
 // =====================================================
@@ -2062,7 +2173,7 @@ function openNum(t){S.numT=t;S.numStr=t==='w'?fmt(S.w):(t==='f'?String(S.failR):
 function closeNum(){document.getElementById('nm').classList.remove('on');}
 function ni(c){if(c==='.'&&S.numStr.includes('.'))return;S.numStr=(S.numStr==='0'&&c!=='.')?c:S.numStr+c;if(S.numStr.length>6)S.numStr=S.numStr.slice(0,-1);document.getElementById('nm-dsp').textContent=S.numStr||'0';}
 function nd(){S.numStr=S.numStr.slice(0,-1)||'0';document.getElementById('nm-dsp').textContent=S.numStr;}
-function nc(){var v=parseFloat(S.numStr)||0;if(S.numT==='w'){S.w=v;document.getElementById('wv').textContent=fmt(v);}else if(S.numT==='f'){S.failR=Math.max(1,Math.round(v));document.getElementById('fv').textContent=S.failR;}else{S.r=Math.max(1,Math.round(v));document.getElementById('rv').textContent=S.r;}closeNum();}
+function nc(){var v=parseFloat(S.numStr)||0;if(S.numT==='w'){S.w=v;document.getElementById('wv').textContent=fmt(v);}else if(S.numT==='f'){S.failR=Math.max(1,Math.round(v));document.getElementById('fv').textContent=S.failR;}else{S.r=Math.max(1,Math.round(v));document.getElementById('rv').textContent=S.r;}var pc=document.getElementById('prev-compare');if(pc&&S.exE)pc.innerHTML=prevSetCompareHtml(S.part,S.ex,(S.exE.sets||[]).length+1,S.w,S.r);closeNum();}
 
 // =====================================================
 // TODAY
@@ -2297,6 +2408,7 @@ function showPR(){
 // =====================================================
 function showSet2(){
   var ss=gS(),ts=0;for(var i=0;i<ss.length;i++)for(var j=0;j<(ss[i].exercises||[]).length;j++)ts+=(ss[i].exercises[j].sets||[]).length;
+  var dev=document.getElementById('device-name');if(dev)dev.value=deviceName()==='未設定の端末'?'':deviceName();
   document.getElementById('hidden-btn').textContent=S.showHidden?'👁 非表示種目を隠す':'👁 非表示種目を表示';
   document.getElementById('auto-next-btn').textContent=isAutoNext()?'⏱ 自動で次セットへ戻る: ON':'⏱ 自動で次セットへ戻る: OFF';
   updDebugBtn();
@@ -2304,14 +2416,67 @@ function showSet2(){
   document.getElementById('cfg-walk-inc').value=fmt1(wd.incline);
   document.getElementById('cfg-walk-spd').value=fmt1(wd.speed);
   document.getElementById('cfg-walk-min').value=wd.targetMin;
+  var bi=document.getElementById('backup-info'),bd=backupDays(),bc=backupStats();
+  if(bi)bi.innerHTML='端末名: <b style="color:#f4f7fa;">'+esc(deviceName())+'</b><br>💾 '+backupLabel()+'<br>📥 最終インポート: '+esc(lastImportLabel())+'<br>'
+    +'現在の記録: '+bc.total+'件 / 今日: '+bc.today+'件<br>筋トレ: '+bc.strength+'件 / ウォーキング: '+bc.walking+'件<br>'
+    +(bd>=7?'<span style="color:#f59e0b;font-weight:900;">7日以上バックアップしていません</span>':'<span style="color:#25c46b;font-weight:900;">バックアップ状態 OK</span>');
   document.getElementById('st-stats').innerHTML='📊 アプリ内記録: '+ss.length+'セッション / '+ts+'セット<br>📅 既存データ: '+(HD?HD.length:0)+'件 (2023〜2026)';
   show('sts');
 }
 function togHidden(){S.showHidden=!S.showHidden;showSet2();}
 function togAutoNext(){setAutoNext(!isAutoNext());showSet2();}
-function expData(){var d=JSON.stringify({sessions:gS(),user_exercises:gU(),exercise_meta:gEM(),interval_prefs:gIP(),app_config:gCFG(),exported_at:new Date().toISOString()},null,2);var b=new Blob([d],{type:'application/json'});var u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='training_'+toDay()+'.json';a.click();setTimeout(function(){URL.revokeObjectURL(u);},1000);}
-function impData(){document.getElementById('imp-f').click();}
-function onImp(ev){var f=ev.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(e){try{var d=JSON.parse(e.target.result);if(d.sessions&&Array.isArray(d.sessions)){if(confirm(d.sessions.length+'件インポートしますか？')){pS(d.sessions);if(d.user_exercises)pU(d.user_exercises);if(d.exercise_meta)pEM(d.exercise_meta);if(d.interval_prefs)pIP(d.interval_prefs);if(d.app_config)pCFG(d.app_config);alert('完了');}}else alert('無効なデータ');}catch(e){alert('読込失敗: '+e.message);}};r.readAsText(f);}
+function saveDeviceName(){var c=gCFG(),v=(document.getElementById('device-name').value||'').trim();c.device_name=v||'未設定の端末';pCFG(c);showToast('端末名を保存しました','success');showSet2();}
+function lastImportLabel(){var c=gCFG();return c.last_import?String(c.last_import).slice(0,16).replace('T',' '):'未実施';}
+function backupStats(data){data=data||{sessions:gS()};var s=data.sessions||[],st=0,wk=0,today=0,td=toDay();for(var i=0;i<s.length;i++)for(var j=0;j<(s[i].exercises||[]).length;j++){var ex=s[i].exercises[j],isW=ex.type==='walking'||!!ex.cardio;if(isW)wk++;else st+=(ex.sets||[]).length;if(s[i].date===td)today+=isW?1:(ex.sets||[]).length;}return{strength:st,walking:wk,total:st+wk,today:today,sessions:s.length};}
+function ensureSyncIds(data){
+  data=data||{};data.sessions=data.sessions||[];
+  for(var i=0;i<data.sessions.length;i++){
+    var s=data.sessions[i];s.id=s.id||('sess-'+(s.date||'nodate'));s.updatedAt=s.updatedAt||s.ended_at||s.started_at||new Date().toISOString();s.exercises=s.exercises||[];
+    for(var j=0;j<s.exercises.length;j++){
+      var ex=s.exercises[j];ex.id=ex.id||('ex-'+s.id+'-'+(ex.part||'')+'-'+(ex.parent_name||ex.name||'')+'-'+(ex.cardio&&ex.cardio.startTime||j));ex.updatedAt=ex.updatedAt||ex.performed_at||s.updatedAt;
+      if(ex.cardio){ex.cardio.id=ex.cardio.id||('walk-'+ex.id);ex.cardio.updatedAt=ex.cardio.updatedAt||ex.cardio.endTime||ex.cardio.startTime||ex.updatedAt;}
+      ex.sets=ex.sets||[];
+      for(var k=0;k<ex.sets.length;k++){var st=ex.sets[k];st.id=st.id||('set-'+(s.date||'')+'-'+(ex.part||'')+'-'+(ex.parent_name||ex.name||'')+'-'+(st.order||k+1)+'-'+(st.weight_kg||0)+'-'+(st.reps||0)+'-'+(st.performed_at||''));st.updatedAt=st.updatedAt||st.performed_at||ex.updatedAt;}
+    }
+  }
+  return data;
+}
+function exportPayload(){var c=gCFG();c.last_export=toDay();c.last_updated_at=new Date().toISOString();pCFG(c);return ensureSyncIds({schema:'training-app-backup',version:'sync-v1',device_name:deviceName(),created_at:new Date().toISOString(),updated_at:new Date().toISOString(),sessions:gS(),user_exercises:gU(),exercise_meta:gEM(),interval_prefs:gIP(),app_config:gCFG(),pr_data:PR});}
+function expData(){var payload=exportPayload(),d=JSON.stringify(payload,null,2);var b=new Blob([d],{type:'application/json'});var u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='training_backup_'+nowStamp()+'_'+safeDeviceName()+'.json';a.click();setTimeout(function(){URL.revokeObjectURL(u);},1000);showToast('バックアップを書き出しました','success');renderHome();showSet2();}
+function impData(mode){S.impMode=mode||'merge';document.getElementById('imp-f').value='';document.getElementById('imp-f').click();}
+function onImp(ev){var f=ev.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(e){try{var d=JSON.parse(e.target.result);if(!d.sessions||!Array.isArray(d.sessions)){alert('無効なデータです');return;}S.pendingImport=ensureSyncIds(d);renderImportReview(S.pendingImport,S.impMode||'merge');}catch(err){alert('読込失敗: '+err.message);}};r.readAsText(f);}
+function syncIds(data){var ids={},s=(data&&data.sessions)||[];for(var i=0;i<s.length;i++)for(var j=0;j<(s[i].exercises||[]).length;j++){var ex=s[i].exercises[j];if(ex.cardio)ids[ex.cardio.id||ex.id]=ex.cardio.updatedAt||ex.updatedAt||'';for(var k=0;k<(ex.sets||[]).length;k++)ids[ex.sets[k].id]=ex.sets[k].updatedAt||'';}return ids;}
+function importPlan(data){var cur=ensureSyncIds({sessions:gS()}),a=syncIds(cur),b=syncIds(data),add=0,upd=0;for(var id in b){if(!a[id])add++;else if(String(b[id])>String(a[id]))upd++;}return{add:add,upd:upd,current:backupStats(cur),file:backupStats(data)};}
+function renderImportReview(data,mode){
+  var p=importPlan(data),el=document.getElementById('import-review');if(!el)return;
+  el.style.display='block';
+  el.innerHTML='<b>インポート確認</b><br>方式: '+(mode==='replace'?'上書きインポート':'結合インポート')+'<br>'
+    +'ファイル端末: '+esc(data.device_name||data.app_config&&data.app_config.device_name||'未設定')+'<br>'
+    +'作成日時: '+esc(data.created_at||data.exported_at||'-')+'<br>'
+    +'現在: '+p.current.total+'件（筋トレ'+p.current.strength+' / 歩行'+p.current.walking+'）<br>'
+    +'ファイル: '+p.file.total+'件（筋トレ'+p.file.strength+' / 歩行'+p.file.walking+'）<br>'
+    +'結合時の見込み: 追加 '+p.add+'件 / 更新 '+p.upd+'件<br>'
+    +(mode==='replace'?'<span style="color:#ef4444;font-weight:900;">上書きは現在データを置き換えます。実行前に確認します。</span>':'<span style="color:#22d3ee;font-weight:900;">結合は現在データを消しません。</span>')
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;"><button class="wide-btn dk" onclick="cancelImport()">キャンセル</button><button class="wide-btn" onclick="executeImport(&quot;merge&quot;)">結合インポート実行</button><button class="wide-btn red" style="grid-column:span 2" onclick="executeImport(&quot;replace&quot;)">上書きインポート実行</button></div>';
+}
+function cancelImport(){S.pendingImport=null;var el=document.getElementById('import-review');if(el)el.style.display='none';}
+function newer(a,b){return String(a||'')>=String(b||'');}
+function mergeSets(dst,src){dst=dst||[];var map={};for(var i=0;i<dst.length;i++)map[dst[i].id]=i;for(var j=0;j<src.length;j++){var st=src[j],idx=map[st.id];if(idx===undefined){dst.push(st);map[st.id]=dst.length-1;}else if(newer(st.updatedAt,dst[idx].updatedAt))dst[idx]=st;}dst.sort(function(a,b){return(a.order||0)-(b.order||0)||String(a.performed_at||'').localeCompare(String(b.performed_at||''));});for(var k=0;k<dst.length;k++)dst[k].order=k+1;return dst;}
+function exKey(ex){return ex.id||((ex.part||'')+'|'+(ex.parent_name||ex.name||'')+'|'+(ex.cardio&&ex.cardio.startTime||''));}
+function mergeExercises(dst,src){dst=dst||[];var map={};for(var i=0;i<dst.length;i++)map[exKey(dst[i])]=i;for(var j=0;j<src.length;j++){var ex=src[j],key=exKey(ex),idx=map[key];if(idx===undefined){dst.push(ex);map[key]=dst.length-1;}else{var cur=dst[idx];if(ex.cardio){if(!cur.cardio||newer(ex.cardio.updatedAt||ex.updatedAt,cur.cardio.updatedAt||cur.updatedAt))dst[idx]=ex;}else{cur.sets=mergeSets(cur.sets||[],ex.sets||[]);cur.updatedAt=newer(ex.updatedAt,cur.updatedAt)?ex.updatedAt:cur.updatedAt;}}}return dst;}
+function mergeSessions(current,incoming){current=ensureSyncIds({sessions:current}).sessions;incoming=ensureSyncIds({sessions:incoming}).sessions;var map={};for(var i=0;i<current.length;i++)map[current[i].date||current[i].id]=i;for(var j=0;j<incoming.length;j++){var s=incoming[j],key=s.date||s.id,idx=map[key];if(idx===undefined){current.push(s);map[key]=current.length-1;}else{var c=current[idx];c.exercises=mergeExercises(c.exercises||[],s.exercises||[]);c.updatedAt=newer(s.updatedAt,c.updatedAt)?s.updatedAt:c.updatedAt;c.ended_at=c.ended_at||s.ended_at;}}current.sort(function(a,b){return String(a.date||'').localeCompare(String(b.date||''));});return current;}
+function mergeNamedLists(a,b){a=a||{};b=b||{};var out=JSON.parse(JSON.stringify(a));for(var p in b){out[p]=out[p]||[];var names={};for(var i=0;i<out[p].length;i++)names[out[p][i].name]=i;for(var j=0;j<b[p].length;j++){var e=b[p][j],idx=names[e.name];if(idx===undefined){out[p].push(e);names[e.name]=out[p].length-1;}else out[p][idx]=Object.assign({},out[p][idx],e);}}return out;}
+function baseBestForNames(part,names){var b=0;for(var i=0;i<names.length;i++)b=Math.max(b,getPRV(part,names[i]),getHMax(part,names[i]));return b;}
+function markPrFlags(){var ss=gS(),run={};ss.sort(function(a,b){return String(a.date||'').localeCompare(String(b.date||''));});for(var s=0;s<ss.length;s++)for(var e=0;e<(ss[s].exercises||[]).length;e++){var ex=ss[s].exercises[e];if(!isStrengthPart(ex.part))continue;var names=aliasesFor(ex.part,ex.parent_name||ex.name),key=ex.part+'|'+names[0];if(run[key]===undefined)run[key]=baseBestForNames(ex.part,names);for(var k=0;k<(ex.sets||[]).length;k++){var st=ex.sets[k],w=Number(st.weight_kg)||0;st.pr_updated=!!(st.achieved&&w>Number(run[key]||0));if(st.achieved&&w>Number(run[key]||0))run[key]=w;}}pS(ss);}
+function applyImportMeta(data){var old=gCFG(),next=Object.assign({},old,data.app_config||{});next.device_name=old.device_name||next.device_name||'未設定の端末';next.last_import=new Date().toISOString();pCFG(next);if(data.user_exercises)pU(mergeNamedLists(gU(),data.user_exercises));if(data.exercise_meta)pEM(Object.assign({},gEM(),data.exercise_meta));if(data.interval_prefs)pIP(Object.assign({},gIP(),data.interval_prefs));}
+function executeImport(mode){
+  var d=S.pendingImport;if(!d){alert('インポートするファイルがありません');return;}
+  if(mode==='replace'&&!confirm('現在のデータをバックアップファイルで上書きします。保存済みデータが置き換わります。実行しますか？'))return;
+  if(mode==='replace'&&!confirm('本当に上書きしますか？'))return;
+  if(mode==='replace'){pS(ensureSyncIds(d).sessions||[]);if(d.user_exercises)pU(d.user_exercises);if(d.exercise_meta)pEM(d.exercise_meta);if(d.interval_prefs)pIP(d.interval_prefs);var c=Object.assign({},d.app_config||{});c.device_name=deviceName();c.last_import=new Date().toISOString();pCFG(c);}
+  else{pS(mergeSessions(gS(),d.sessions||[]));applyImportMeta(d);}
+  markPrFlags();cancelImport();showToast('インポート完了','success');renderHome();showSet2();
+}
 function clrToday(){if(confirm('今日のデータを削除しますか？')){pS(gS().filter(function(s){return s.date!==toDay();}));alert('削除しました');}}
 
 // =====================================================
