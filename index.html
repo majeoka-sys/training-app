@@ -2469,13 +2469,22 @@ function mergeNamedLists(a,b){a=a||{};b=b||{};var out=JSON.parse(JSON.stringify(
 function baseBestForNames(part,names){var b=0;for(var i=0;i<names.length;i++)b=Math.max(b,getPRV(part,names[i]),getHMax(part,names[i]));return b;}
 function markPrFlags(){var ss=gS(),run={};ss.sort(function(a,b){return String(a.date||'').localeCompare(String(b.date||''));});for(var s=0;s<ss.length;s++)for(var e=0;e<(ss[s].exercises||[]).length;e++){var ex=ss[s].exercises[e];if(!isStrengthPart(ex.part))continue;var names=aliasesFor(ex.part,ex.parent_name||ex.name),key=ex.part+'|'+names[0];if(run[key]===undefined)run[key]=baseBestForNames(ex.part,names);for(var k=0;k<(ex.sets||[]).length;k++){var st=ex.sets[k],w=Number(st.weight_kg)||0;st.pr_updated=!!(st.achieved&&w>Number(run[key]||0));if(st.achieved&&w>Number(run[key]||0))run[key]=w;}}pS(ss);}
 function applyImportMeta(data){var old=gCFG(),next=Object.assign({},old,data.app_config||{});next.device_name=old.device_name||next.device_name||'未設定の端末';next.last_import=new Date().toISOString();pCFG(next);if(data.user_exercises)pU(mergeNamedLists(gU(),data.user_exercises));if(data.exercise_meta)pEM(Object.assign({},gEM(),data.exercise_meta));if(data.interval_prefs)pIP(Object.assign({},gIP(),data.interval_prefs));}
+function activeScreenId(){var xs=document.querySelectorAll('.screen.on');return xs&&xs[0]?xs[0].id:'';}
+function refreshAfterImport(prev){
+  renderHome();
+  if(prev==='stoday')showToday();
+  else if(prev==='shist')showHist();
+  else if(prev==='sh')goHome();
+  else showSet2();
+}
 function executeImport(mode){
   var d=S.pendingImport;if(!d){alert('インポートするファイルがありません');return;}
+  var prev=activeScreenId();
   if(mode==='replace'&&!confirm('現在のデータをバックアップファイルで上書きします。保存済みデータが置き換わります。実行しますか？'))return;
   if(mode==='replace'&&!confirm('本当に上書きしますか？'))return;
   if(mode==='replace'){pS(ensureSyncIds(d).sessions||[]);if(d.user_exercises)pU(d.user_exercises);if(d.exercise_meta)pEM(d.exercise_meta);if(d.interval_prefs)pIP(d.interval_prefs);var c=Object.assign({},d.app_config||{});c.device_name=deviceName();c.last_import=new Date().toISOString();pCFG(c);}
   else{pS(mergeSessions(gS(),d.sessions||[]));applyImportMeta(d);}
-  markPrFlags();cancelImport();showToast('インポート完了','success');renderHome();showSet2();
+  markPrFlags();cancelImport();showToast('インポート完了','success');refreshAfterImport(prev);
 }
 function clrToday(){if(confirm('今日のデータを削除しますか？')){pS(gS().filter(function(s){return s.date!==toDay();}));alert('削除しました');}}
 
