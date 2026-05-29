@@ -406,6 +406,19 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
   padding:16px 16px calc(18px + var(--safe-b));}
 .modal-title{font-size:22px;font-weight:900;margin-bottom:12px;}
 .modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+.fail-modal{z-index:9999;align-items:center;justify-content:center;padding:20px;padding-bottom:calc(20px + var(--safe-b));}
+.fail-modal .modal-card{width:min(100%,520px);max-height:calc(100vh - 40px - var(--safe-b));border:1px solid var(--line2);border-radius:22px;background:linear-gradient(160deg,#151A22,#0B0F14);box-shadow:0 28px 90px rgba(0,0,0,.62);padding:22px;}
+.fail-title{font-size:28px;font-weight:900;text-align:center;margin-bottom:6px;}
+.fail-desc{text-align:center;color:var(--text2);font-size:15px;font-weight:800;margin-bottom:18px;}
+.fail-plan{display:flex;justify-content:space-between;gap:12px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;margin-bottom:16px;font-weight:900;}
+.fail-plan span:first-child{color:var(--text3);}
+.fail-step{display:grid;grid-template-columns:76px 64px minmax(112px,1fr) 64px 76px;gap:10px;align-items:center;}
+.fail-step .sb{width:auto;min-height:70px;font-size:24px;}
+.fail-input{width:100%;min-height:82px;border-radius:16px;border:1px solid rgba(76,141,255,.55);background:#0B1220;color:var(--text);font-size:46px;font-weight:900;text-align:center;appearance:textfield;}
+.fail-input::-webkit-outer-spin-button,.fail-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+.fail-actions{margin-top:18px;}
+.fail-actions .wide-btn{min-height:64px;font-size:18px;}
+@media (max-width:430px){.fail-step{grid-template-columns:1fr 1fr;}.fail-input{grid-column:1/-1;order:-1}.fail-step .sb{min-height:58px}.fail-modal .modal-card{padding:18px}.fail-title{font-size:24px;}}
 @media (hover:none) and (pointer:coarse), (max-width:900px){
   #app{left:0;right:0;width:100%;max-width:none;transform:none;box-shadow:none;}
 }
@@ -460,20 +473,22 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
 </div>
 
 <!-- Fail reps modal -->
-<div id="fail-md" class="modal">
+<div id="fail-md" class="modal fail-modal">
   <div class="modal-card">
-    <div class="modal-title">実際にできた回数</div>
-    <div class="stepper">
+    <div class="fail-title">未達記録</div>
+    <div class="fail-desc">実際にできた回数を入力</div>
+    <div class="fail-plan"><span>予定</span><span id="fail-plan">10回</span></div>
+    <div class="fail-plan"><span>実際</span><span><span id="fv">9</span>回</span></div>
+    <div class="fail-step">
       <button class="sb lg" onclick="af(-5)">-5</button>
       <button class="sb sm" onclick="af(-1)">-1</button>
-      <div class="sv" id="fv" onclick="openNum('f')">1</div>
+      <input class="fail-input" id="fail-input" type="number" inputmode="numeric" min="1" step="1" value="9" oninput="setFailActual(this.value)" onclick="this.select()">
       <button class="sb sm" onclick="af(1)">+1</button>
       <button class="sb lg" onclick="af(5)">+5</button>
-      <span class="su">回</span>
     </div>
-    <div class="modal-actions">
-      <button class="wide-btn dk" onclick="closeFail()">戻る</button>
-      <button class="wide-btn red" onclick="confirmFail()">未達で記録</button>
+    <div class="modal-actions fail-actions">
+      <button class="wide-btn dk" onclick="closeFail()">キャンセル</button>
+      <button class="wide-btn red" onclick="confirmFail()">未達で保存</button>
     </div>
   </div>
 </div>
@@ -548,7 +563,7 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
     <div class="date-bar"><div class="dt" id="h-dt"></div><div class="si" id="h-si"></div></div>
     <div class="summary-card" id="h-sum"></div>
   </div>
-  <div class="app-version">UI v3.8 sync-helper</div>
+  <div class="app-version">UI v3.9 fail-modal</div>
   <div class="backup-warn" id="home-backup-warn">バックアップから7日以上経っています</div>
   <div class="scroll"><div class="home-sec">Body Parts</div><div class="parts-stack" id="h-pg"></div></div>
   <div class="bot-bar">
@@ -1053,6 +1068,8 @@ function snapWeight(v){
 function isCardio(){return S.part==='有酸素';}
 function setDesc(part,st){
   if(part==='有酸素')return fmt(st.weight_kg)+'km/h / '+st.reps+'分';
+  var actual=st.actualReps||st.actual_reps;
+  if(st.achieved===false&&actual)return fmt(st.weight_kg)+'kg × '+actual+'回 / 予定'+(st.planned_reps||st.reps)+'回';
   return fmt(st.weight_kg)+'kg × '+st.reps+'回';
 }
 function grpCfg(part,name){
@@ -1844,6 +1861,7 @@ function bindStrengthActionButtons(){
     fail[j].onclick=function(e){
       if(e){e.preventDefault();e.stopPropagation();}
       if(!directActionGuard('strength-fail'))return false;
+      dbg('fail button clicked');
       dbg('REAL strength fail clicked');
       handleStrengthFailDirect();
       return false;
@@ -1872,6 +1890,7 @@ function handleStrengthFailDirect(){
 }
 function saveStrengthSetDirect(ach,actualReps){
   dbg('saveStrengthSetDirect called ach='+ach+' actual='+actualReps);
+  if(!ach)dbg('saveSet achieved=false');
   var ss=gS(),td=toDay(),si=-1;
   for(var i=0;i<ss.length;i++)if(ss[i].date===td){si=i;break;}
   if(si<0){ss.push({id:uid(),date:td,started_at:new Date().toISOString(),ended_at:null,exercises:[]});si=ss.length-1;}
@@ -1880,7 +1899,7 @@ function saveStrengthSetDirect(ach,actualReps){
   if(ei<0){ss[si].exercises.push({part:S.part,name:S.ex,parent_name:S.ex,original_name:S.origEx||S.ex,sets:[]});ei=ss[si].exercises.length-1;}
   var ex=ss[si].exercises[ei];ex.parent_name=S.ex;ex.original_name=ex.original_name||S.origEx||S.ex;ex.sets=ex.sets||[];
   var bestBefore=ach?bestForNames(S.part,aliasesFor(S.part,S.ex)):0;
-  var savedSet={order:ex.sets.length+1,part:S.part,exercise:S.ex,weight_kg:S.w,reps:actualReps,planned_reps:S.r,achieved:ach,pr_updated:!!(ach&&Number(S.w)>Number(bestBefore||0)),rest_seconds:0,post_interval_elapsed_sec:S.lastPostWait||0,
+  var savedSet={order:ex.sets.length+1,part:S.part,exercise:S.ex,weight_kg:S.w,reps:ach?actualReps:S.r,actualReps:ach?null:actualReps,actual_reps:ach?null:actualReps,planned_reps:S.r,achieved:ach,pr_updated:!!(ach&&Number(S.w)>Number(bestBefore||0)),rest_seconds:0,post_interval_elapsed_sec:S.lastPostWait||0,
     memo:S.vari!=='標準'?S.vari:'',variation:S.vari,parent_name:S.ex,original_name:S.origEx||S.ex,performed_at:new Date().toISOString()};
   ex.sets.push(savedSet);
   pS(ss);S.sess=ss[si];S.exE=ex;
@@ -1981,6 +2000,7 @@ function beginIntervalAfterSet(){
 }
 function saveSet(ach,actualReps){
   dbg('saveSet called ach='+ach+' actual='+actualReps);
+  if(!ach)dbg('saveSet achieved=false');
   var ss=gS(),td=toDay(),si=-1;
   for(var i=0;i<ss.length;i++)if(ss[i].date===td){si=i;break;}
   if(si<0){dbg('saveSet stop: today session missing');return;}
@@ -1990,19 +2010,30 @@ function saveSet(ach,actualReps){
   ss[si].exercises[ei].original_name=ss[si].exercises[ei].original_name||S.origEx||S.ex;
   var sets=ss[si].exercises[ei].sets;
   var bestBefore=ach?bestForNames(S.part,aliasesFor(S.part,S.ex)):0;
-  var savedSet={order:sets.length+1,part:S.part,exercise:S.ex,weight_kg:S.w,reps:actualReps,planned_reps:S.r,achieved:ach,pr_updated:!!(ach&&Number(S.w)>Number(bestBefore||0)),rest_seconds:0,post_interval_elapsed_sec:S.lastPostWait||0,
+  var savedSet={order:sets.length+1,part:S.part,exercise:S.ex,weight_kg:S.w,reps:ach?actualReps:S.r,actualReps:ach?null:actualReps,actual_reps:ach?null:actualReps,planned_reps:S.r,achieved:ach,pr_updated:!!(ach&&Number(S.w)>Number(bestBefore||0)),rest_seconds:0,post_interval_elapsed_sec:S.lastPostWait||0,
     memo:S.vari!=='標準'?S.vari:'',variation:S.vari,parent_name:S.ex,original_name:S.origEx||S.ex,performed_at:new Date().toISOString()};
   sets.push(savedSet);
   pS(ss);dbg('set saved order='+(sets.length));S.exE=ss[si].exercises[ei];S.sess=ss[si];
   if(ach)chkPR(S.part,S.ex,S.w,bestBefore);
   beep(660,0.15);afterStrengthSetSaved(savedSet);
 }
-function openFail(){dbg('openFail called');S.failR=Math.max(1,S.r-1);document.getElementById('fv').textContent=S.failR;document.getElementById('fail-md').classList.add('on');}
-function closeFail(){document.getElementById('fail-md').classList.remove('on');}
-function af(d){S.failR=Math.max(1,S.failR+d);document.getElementById('fv').textContent=S.failR;}
+function syncFailInput(){document.getElementById('fv').textContent=S.failR;var inp=document.getElementById('fail-input');if(inp)inp.value=S.failR;}
+function openFail(){
+  S.failR=Math.max(1,(parseInt(S.r,10)||1)-1);
+  document.getElementById('fail-plan').textContent=(parseInt(S.r,10)||0)+'回';
+  syncFailInput();
+  dbg('openFailModal currentReps='+S.r+' actualReps='+S.failR);
+  document.getElementById('fail-md').classList.add('on');
+  setTimeout(function(){try{document.getElementById('fail-input').focus();document.getElementById('fail-input').select();}catch(e){}},50);
+}
+function hideFail(){document.getElementById('fail-md').classList.remove('on');}
+function closeFail(){hideFail();dbg('fail modal canceled');}
+function setFailActual(v){S.failR=Math.max(1,parseInt(v,10)||1);syncFailInput();dbg('fail actualReps changed='+S.failR);}
+function af(d){S.failR=Math.max(1,S.failR+d);syncFailInput();dbg('fail actualReps changed='+S.failR);}
 function confirmFail(){
-  dbg('confirmFail called actual='+S.failR);
-  closeFail();
+  setFailActual(document.getElementById('fail-input').value);
+  dbg('confirmFail actualReps='+S.failR);
+  hideFail();
   if(isStrengthPart(S.part)&&!isCardioPart(S.part,S.ex)&&!isWalkingEx(S.part,S.ex)){
     var savedSet=saveStrengthSetDirect(false,S.failR);
     if(savedSet){dbg('savedSet direct part='+savedSet.part+' ex='+savedSet.exercise);startStrengthIntervalDirect(savedSet);}
@@ -2169,11 +2200,11 @@ function resumeLast(){var s=getTodSess();if(!s||!(s.exercises||[]).length){goHom
 // =====================================================
 // NUM MODAL
 // =====================================================
-function openNum(t){S.numT=t;S.numStr=t==='w'?fmt(S.w):(t==='f'?String(S.failR):String(S.r));document.getElementById('nm-tt').textContent=t==='w'?'重量 (kg)':'レップ数';document.getElementById('nm-dsp').textContent=S.numStr;document.getElementById('nm').classList.add('on');}
+function openNum(t){S.numT=t;S.numStr=t==='w'?fmt(S.w):(t==='f'?String(S.failR):String(S.r));document.getElementById('nm-tt').textContent=t==='w'?'重量 (kg)':(t==='f'?'実回数':'レップ数');document.getElementById('nm-dsp').textContent=S.numStr;document.getElementById('nm').classList.add('on');}
 function closeNum(){document.getElementById('nm').classList.remove('on');}
 function ni(c){if(c==='.'&&S.numStr.includes('.'))return;S.numStr=(S.numStr==='0'&&c!=='.')?c:S.numStr+c;if(S.numStr.length>6)S.numStr=S.numStr.slice(0,-1);document.getElementById('nm-dsp').textContent=S.numStr||'0';}
 function nd(){S.numStr=S.numStr.slice(0,-1)||'0';document.getElementById('nm-dsp').textContent=S.numStr;}
-function nc(){var v=parseFloat(S.numStr)||0;if(S.numT==='w'){S.w=v;document.getElementById('wv').textContent=fmt(v);}else if(S.numT==='f'){S.failR=Math.max(1,Math.round(v));document.getElementById('fv').textContent=S.failR;}else{S.r=Math.max(1,Math.round(v));document.getElementById('rv').textContent=S.r;}var pc=document.getElementById('prev-compare');if(pc&&S.exE)pc.innerHTML=prevSetCompareHtml(S.part,S.ex,(S.exE.sets||[]).length+1,S.w,S.r);closeNum();}
+function nc(){var v=parseFloat(S.numStr)||0;if(S.numT==='w'){S.w=v;document.getElementById('wv').textContent=fmt(v);}else if(S.numT==='f'){S.failR=Math.max(1,Math.round(v));syncFailInput();dbg('fail actualReps changed='+S.failR);}else{S.r=Math.max(1,Math.round(v));document.getElementById('rv').textContent=S.r;}var pc=document.getElementById('prev-compare');if(pc&&S.exE)pc.innerHTML=prevSetCompareHtml(S.part,S.ex,(S.exE.sets||[]).length+1,S.w,S.r);closeNum();}
 
 // =====================================================
 // TODAY
