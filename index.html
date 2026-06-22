@@ -85,8 +85,28 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
 .cal-wd,.cal-day{min-height:34px;display:flex;align-items:center;justify-content:center;border-radius:10px;font-size:12px;font-weight:900;}
 .cal-wd{color:var(--text3);}
 .cal-day{background:#151A22;color:var(--text2);border:1px solid rgba(255,255,255,.04);}
-.cal-day.has{background:rgba(76,141,255,.16);border-color:rgba(76,141,255,.42);color:#fff;cursor:pointer;position:relative;}
-.cal-day.has:after{content:"";position:absolute;bottom:4px;width:5px;height:5px;border-radius:50%;background:var(--cyan);}
+.cal-day.has{background:rgba(76,141,255,.16);border:1.5px solid rgba(76,141,255,.42);color:#fff;cursor:pointer;position:relative;transition:background .2s,border-color .2s;}
+.cal-day.has:after{content:"";position:absolute;left:5px;right:5px;bottom:3px;height:5px;border-radius:4px;background:var(--partA,var(--cyan));box-shadow:0 0 7px 0 var(--partA,var(--cyan));}
+.cal-day.part-chest{--partA:#F43F5E;background:color-mix(in srgb,var(--partA) 26%,#151A22);border-color:color-mix(in srgb,var(--partA) 60%,transparent);}
+.cal-day.part-arm{--partA:#A855F7;background:color-mix(in srgb,var(--partA) 26%,#151A22);border-color:color-mix(in srgb,var(--partA) 60%,transparent);}
+.cal-day.part-back{--partA:#22C55E;background:color-mix(in srgb,var(--partA) 26%,#151A22);border-color:color-mix(in srgb,var(--partA) 60%,transparent);}
+.cal-day.part-shoulder{--partA:#F97316;background:color-mix(in srgb,var(--partA) 26%,#151A22);border-color:color-mix(in srgb,var(--partA) 60%,transparent);}
+.cal-day.part-core{--partA:#F4C84A;background:color-mix(in srgb,var(--partA) 26%,#151A22);border-color:color-mix(in srgb,var(--partA) 60%,transparent);}
+.cal-day.part-leg{--partA:#3B82F6;background:color-mix(in srgb,var(--partA) 26%,#151A22);border-color:color-mix(in srgb,var(--partA) 60%,transparent);}
+.cal-day.part-cardio{--partA:#06B6D4;background:color-mix(in srgb,var(--partA) 26%,#151A22);border-color:color-mix(in srgb,var(--partA) 60%,transparent);}
+.bar-chart{margin:10px 16px 4px;display:flex;flex-direction:column;gap:10px;}
+.bar-row{display:grid;grid-template-columns:44px 1fr 56px;align-items:center;gap:8px;}
+.bar-lbl{font-size:12px;font-weight:900;color:var(--text2);}
+.bar-track{height:14px;background:#151A22;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.05);}
+.bar-fill{height:100%;border-radius:8px;background:var(--partA,var(--cyan));transition:width .4s ease;}
+.bar-val{font-size:12px;font-weight:900;color:var(--text2);text-align:right;}
+.bar-note{margin:10px 16px 16px;font-size:12px;color:var(--text3);}
+.bar-fill.part-chest{--partA:#F43F5E;}
+.bar-fill.part-arm{--partA:#A855F7;}
+.bar-fill.part-back{--partA:#22C55E;}
+.bar-fill.part-shoulder{--partA:#F97316;}
+.bar-fill.part-core{--partA:#F4C84A;}
+.bar-fill.part-leg{--partA:#3B82F6;}
 .daily-card{margin:0 16px 10px;padding:15px;background:linear-gradient(160deg,#16202E,#0F1623);border:1px solid rgba(255,255,255,.08);border-radius:16px;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.28);}
 .daily-card:active{transform:scale(.99);}
 .daily-date{font-size:20px;font-weight:900;color:var(--text);}
@@ -603,6 +623,17 @@ button.sv{appearance:none;-webkit-appearance:none;}
   .form-grid,.end-grid{grid-template-columns:1fr;}
   .sb.lg,.sb.sm{width:auto}.sv{font-size:44px}.stepper.main .sv{min-width:88px;}
 }
+.go-overlay{position:fixed;inset:0;z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  background:radial-gradient(circle at 50% 42%,#1c3a2c 0%,#0B0F14 72%);}
+.go-overlay.on{display:flex;animation:goFade .22s ease;}
+@keyframes goFade{from{opacity:0;}to{opacity:1;}}
+.go-text{font-size:min(22vw,120px);font-weight:900;letter-spacing:2px;color:#25C46B;
+  animation:goPulse .55s ease-in-out infinite;text-shadow:0 0 40px rgba(37,196,107,.55);}
+@supports (background-clip:text) or (-webkit-background-clip:text){
+  .go-text{background:linear-gradient(135deg,#25C46B,#22D3EE 55%,#F4C84A);-webkit-background-clip:text;background-clip:text;color:transparent;}
+}
+.go-sub{font-size:16px;font-weight:900;color:#cfe9da;letter-spacing:1px;}
+@keyframes goPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.12);}}
 </style>
 </head>
 <body>
@@ -973,6 +1004,10 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <button class="t-nxt" onclick="nextSet()">次のセットへ →</button>
     <button class="t-end" onclick="endEx()">種目終了</button>
   </div>
+</div>
+<div id="sgo" class="go-overlay" aria-hidden="true">
+  <div class="go-text">GO!</div>
+  <div class="go-sub">次のセットへ</div>
 </div>
 <!-- WALKING END MENU -->
 <div id="swalkdone" class="screen">
@@ -1404,7 +1439,7 @@ function silence(){if(!AC)return;try{var b=AC.createBuffer(1,1,22050),s=AC.creat
 // =====================================================
 var S={part:null,ex:null,sess:null,exE:null,
   w:0,r:10,failR:1,vari:'標準',origEx:null,showHidden:false,editPart:null,editName:null,editHidden:false,editPinned:false,
-  tS:0,tTgt:90,tPau:false,tEl:0,tIv:null,tBp:false,tAutoTo:null,
+  tS:0,tTgt:90,tPau:false,tEl:0,tIv:null,tBp:false,tAutoTo:null,tGoTo:null,
   intervalCtx:null,
   postStart:0,postIv:null,postElapsed:0,postActive:false,lastPostWait:0,
   strengthDelegateInstalled:false,lastDirectActionAt:0,lastDirectRole:'',
@@ -2348,6 +2383,7 @@ function startStrengthIntervalDirect(savedSet){
   forceShowScreen('si');
   if(S.tIv){clearInterval(S.tIv);S.tIv=null;}
   if(S.tAutoTo){clearTimeout(S.tAutoTo);S.tAutoTo=null;}
+  hideGoOverlay();
   S.tS=Date.now();S.tPau=false;S.tEl=0;S.tBp=false;S.tDangerLogged=false;
   resetIntervalScroll();
   tickT();
@@ -2415,6 +2451,7 @@ function startStrengthIntervalTimer(){
   dbg('startStrengthIntervalTimer called');
   if(S.tIv){clearInterval(S.tIv);S.tIv=null;}
   if(S.tAutoTo){clearTimeout(S.tAutoTo);S.tAutoTo=null;}
+  hideGoOverlay();
   S.tS=Date.now();S.tPau=false;S.tEl=0;S.tBp=false;S.tDangerLogged=false;
   resetIntervalScroll();
   tickT();
@@ -2499,6 +2536,7 @@ function startInt(){
   if(!last){dbg('startInt stop: last set missing');return;}
   prepareNextDraft(last);
   S.tTgt=getSafeIntervalSeconds(S.part,S.ex);dbg('interval seconds='+S.tTgt);S.tS=Date.now();S.tPau=false;S.tEl=0;S.tBp=false;S.tDangerLogged=false;if(S.tAutoTo){clearTimeout(S.tAutoTo);S.tAutoTo=null;}
+  hideGoOverlay();
   resetIntervalScroll();
   document.getElementById('i-nm').textContent=dispName(S.part,S.ex);
   document.getElementById('t-ls').textContent='Set'+last.order+': '+setDesc(S.part,last)+' '+(last.variation||last.memo||'標準')+' '+(last.achieved?'✓':'✗');
@@ -2559,13 +2597,15 @@ function finishInterval(){
   dbg('interval countdown reached zero');
   updAutoLbl(true);
   if(S.tIv){clearInterval(S.tIv);S.tIv=null;}
-  if(isAutoNext()&&!S.tAutoTo)S.tAutoTo=setTimeout(function(){S.tAutoTo=null;dbg('calling goNextStrengthSetAfterInterval');goNextStrengthSetAfterInterval(true);},850);
+  if(isAutoNext()&&!S.tAutoTo)S.tAutoTo=setTimeout(function(){S.tAutoTo=null;dbg('calling goNextStrengthSetAfterInterval');goNextStrengthSetAfterInterval(true);},500);
 }
 function adjT(d){
   if(S.tAutoTo){clearTimeout(S.tAutoTo);S.tAutoTo=null;}
-  var el=getEl();
-  if(d>0)S.tTgt=Math.max(S.tTgt+d,el+d);
-  else S.tTgt=Math.max(5,el,S.tTgt+d);
+  hideGoOverlay();
+  var el=getEl(),nt;
+  if(d>0)nt=Math.max(S.tTgt+d,el+d);
+  else nt=Math.max(5,el,S.tTgt+d);
+  S.tTgt=Math.ceil(nt/10)*10;/*10秒単位に揃えて綺麗な時間にする(タイマー終了後の調整で時間がズレるのを防止)*/
   S.tBp=false;updAutoLbl(false);
   if(!S.tIv&&!S.tPau)S.tIv=setInterval(tickT,500);
   tickT();
@@ -2583,23 +2623,40 @@ function saveRest(){
 function stopTimer(){
   if(S.tIv){clearInterval(S.tIv);S.tIv=null;}
   if(S.tAutoTo){clearTimeout(S.tAutoTo);S.tAutoTo=null;}
+  hideGoOverlay();
+}
+function showGoOverlay(cb){
+  var el=document.getElementById('sgo');
+  if(!el){cb&&cb();return;}
+  beep(1200,0.12);setTimeout(function(){beep(1600,0.2);},150);
+  el.classList.add('on');
+  if(S.tGoTo)clearTimeout(S.tGoTo);
+  S.tGoTo=setTimeout(function(){S.tGoTo=null;el.classList.remove('on');cb&&cb();},2000);
+}
+function hideGoOverlay(){
+  var el=document.getElementById('sgo');if(el)el.classList.remove('on');
+  if(S.tGoTo){clearTimeout(S.tGoTo);S.tGoTo=null;}
 }
 function stopStrengthIntervalTimer(){stopTimer();}
 function goNextStrengthSetAfterInterval(auto){
   dbg('goNextStrengthSetAfterInterval called');
   try{saveRest();}catch(e){dbg('saveRest before next error: '+e.message);}
-  stopStrengthIntervalTimer();
-  var sets=S.exE&&S.exE.sets?S.exE.sets:[],last=sets.length?sets[sets.length-1]:null;
-  if(S.nextDraft){S.w=Number(S.nextDraft.weight)||0;S.r=Math.max(1,parseInt(S.nextDraft.reps,10)||10);S.vari=S.nextDraft.variation||S.vari||'標準';dbg('apply nextSetDraft weight='+S.w+' reps='+S.r);S.nextDraft=null;}
-  else if(last){S.w=Number(last.weight_kg)||S.w||0;S.r=Number(last.reps)||S.r||10;S.vari=last.variation||last.memo||S.vari||'標準';}
-  try{renderSet();dbg('renderSetScreen called');}catch(e){dbg('renderSetScreen error: '+e.message);showE((e&&e.stack)||String(e));return;}
-  bindStrengthActionButtons();
-  bindSetNumberInputs();
-  forceShowScreen('sset');
-  try{startPostIntervalStopwatch();}catch(e){dbg('post stopwatch error: '+e.message);}
-  var setNo=(S.exE&&S.exE.sets?S.exE.sets.length+1:1);
-  dbg('next set screen shown set='+setNo);
-  dbgScreenState();
+  if(S.tIv){clearInterval(S.tIv);S.tIv=null;}
+  if(S.tAutoTo){clearTimeout(S.tAutoTo);S.tAutoTo=null;}
+  dbg('showing GO overlay before next set');
+  showGoOverlay(function(){
+    var sets=S.exE&&S.exE.sets?S.exE.sets:[],last=sets.length?sets[sets.length-1]:null;
+    if(S.nextDraft){S.w=Number(S.nextDraft.weight)||0;S.r=Math.max(1,parseInt(S.nextDraft.reps,10)||10);S.vari=S.nextDraft.variation||S.vari||'標準';dbg('apply nextSetDraft weight='+S.w+' reps='+S.r);S.nextDraft=null;}
+    else if(last){S.w=Number(last.weight_kg)||S.w||0;S.r=Number(last.reps)||S.r||10;S.vari=last.variation||last.memo||S.vari||'標準';}
+    try{renderSet();dbg('renderSetScreen called');}catch(e){dbg('renderSetScreen error: '+e.message);showE((e&&e.stack)||String(e));return;}
+    bindStrengthActionButtons();
+    bindSetNumberInputs();
+    forceShowScreen('sset');
+    try{startPostIntervalStopwatch();}catch(e){dbg('post stopwatch error: '+e.message);}
+    var setNo=(S.exE&&S.exE.sets?S.exE.sets.length+1:1);
+    dbg('next set screen shown set='+setNo);
+    dbgScreenState();
+  });
 }
 function nextSet(auto){
   if(!auto)beep(550,0.2);
@@ -2881,8 +2938,36 @@ function deleteCustomEx(){
 // HISTORY
 // =====================================================
 
-function showHistTab(mode){if(mode==='daily')showHistDaily();else if(mode==='part')showHistPartTop();else showHistExerciseTop();}
-function histTabs(active){return '<div class="hist-tabs"><button class="hist-tab '+(active==='daily'?'on':'')+'" onclick="showHistTab(\'daily\')">日別</button><button class="hist-tab '+(active==='part'?'on':'')+'" onclick="showHistTab(\'part\')">部位別</button><button class="hist-tab '+(active==='exercise'?'on':'')+'" onclick="showHistTab(\'exercise\')">種目別</button></div>';}
+function showHistTab(mode){if(mode==='daily')showHistDaily();else if(mode==='part')showHistPartTop();else if(mode==='graph')showHistGraph();else showHistExerciseTop();}
+function histTabs(active){return '<div class="hist-tabs"><button class="hist-tab '+(active==='daily'?'on':'')+'" onclick="showHistTab(\'daily\')">日別</button><button class="hist-tab '+(active==='part'?'on':'')+'" onclick="showHistTab(\'part\')">部位別</button><button class="hist-tab '+(active==='exercise'?'on':'')+'" onclick="showHistTab(\'exercise\')">種目別</button><button class="hist-tab '+(active==='graph'?'on':'')+'" onclick="showHistTab(\'graph\')">グラフ</button></div>';}
+function showHistGraph(){
+  var bd=document.getElementById('hist-bd'),ss=gS(),cut=new Date();cut.setDate(cut.getDate()-28);
+  var counts={};for(var pi=0;pi<STRENGTH_PARTS.length;pi++)counts[STRENGTH_PARTS[pi]]=0;
+  var walkCount=0;
+  for(var i=0;i<ss.length;i++){
+    var s=ss[i];if(!s.date)continue;var sd=new Date(s.date);if(isNaN(sd)||sd<cut)continue;
+    var exs=s.exercises||[];
+    for(var j=0;j<exs.length;j++){
+      var ex=exs[j];
+      if(ex.type==='walking'||ex.cardio){walkCount++;continue;}
+      var p=ex.part;if(counts[p]===undefined)continue;
+      counts[p]+=(ex.sets||[]).length;
+    }
+  }
+  if(HD)for(var h=0;h<HD.length;h++){
+    var hh=HD[h];if(!hh||!hh.d)continue;var hd=new Date(hh.d);if(isNaN(hd)||hd<cut)continue;
+    if(counts[hh.p]===undefined)continue;
+    counts[hh.p]+=legacySetCount(hh);
+  }
+  var max=1;for(var pj=0;pj<STRENGTH_PARTS.length;pj++)if(counts[STRENGTH_PARTS[pj]]>max)max=counts[STRENGTH_PARTS[pj]];
+  var rows='';
+  for(var pk=0;pk<STRENGTH_PARTS.length;pk++){
+    var p2=STRENGTH_PARTS[pk],n=counts[p2]||0,pct=Math.round(n/max*100);
+    rows+='<div class="bar-row"><div class="bar-lbl">'+esc(p2)+'</div><div class="bar-track"><div class="bar-fill '+partClass(p2)+'" style="width:'+pct+'%"></div></div><div class="bar-val">'+n+'set</div></div>';
+  }
+  bd.innerHTML=histTabs('graph')+'<div class="sec-title">部位別バランス(直近4週)</div><div class="bar-chart">'+rows+'</div><div class="bar-note">有酸素(ウォーキング等): 直近4週で'+walkCount+'回</div>';
+  show('shist');
+}
 function trainingDates(){var map={},out=[],ss=gS().filter(function(s){return s&&s.date;});for(var i=0;i<ss.length;i++)map[ss[i].date]=ss[i];if(HD)for(var h=0;h<HD.length;h++)if(HD[h]&&HD[h].d&&!map[HD[h].d])map[HD[h].d]={date:HD[h].d,exercises:[]};for(var d in map)out.push(map[d]);out.sort(function(a,b){return String(b.date).localeCompare(String(a.date));});return out;}
 function showHistDaily(){
   dbg('renderDailyHistory called');var bd=document.getElementById('hist-bd'),ss=trainingDates();dbg('daily records count='+ss.length);
@@ -2904,13 +2989,27 @@ function showHistDaily(){
   }
   show('shist');
 }
+function mainPartClassForSession(sess){
+  var exs=(sess&&sess.exercises)||[],count={},hasWalk=false;
+  for(var i=0;i<exs.length;i++){
+    var ex=exs[i],isWalk=ex.type==='walking'||!!ex.cardio;
+    if(isWalk){hasWalk=true;continue;}
+    var p=ex.part||'',n=(ex.sets||[]).length;if(!p||!n)continue;
+    count[p]=(count[p]||0)+n;
+  }
+  var best=null,bestN=0;for(var p2 in count)if(count[p2]>bestN){bestN=count[p2];best=p2;}
+  if(!best&&hasWalk)best='有酸素';
+  return best?partClass(best):'';
+}
 function renderHistoryCalendar(){
-  var el=document.getElementById('hist-cal');if(!el)return;var ss=gS(),has={};for(var i=0;i<ss.length;i++)if(ss[i].date)has[ss[i].date]=1;
+  var el=document.getElementById('hist-cal');if(!el)return;var ss=gS(),has={};
+  for(var i=0;i<ss.length;i++)if(ss[i].date)has[ss[i].date]=mainPartClassForSession(ss[i]);
+  if(HD)for(var h=0;h<HD.length;h++){var hh=HD[h];if(hh&&hh.d&&!has.hasOwnProperty(hh.d))has[hh.d]=partClass(hh.p)||'';}
   var parts=(S.histMonth||toDay().slice(0,7)).split('-'),y=parseInt(parts[0],10),m=parseInt(parts[1],10)-1;
   var first=new Date(y,m,1),last=new Date(y,m+1,0),start=first.getDay(),days=last.getDate(),html='<div class="daily-cal"><div class="cal-head"><button class="cal-nav" onclick="moveHistMonth(-1)">前月</button><div class="cal-title">'+y+'年'+(m+1)+'月</div><button class="cal-nav" onclick="moveHistMonth(1)">次月</button></div><div class="cal-grid">';
   ['日','月','火','水','木','金','土'].forEach(function(w){html+='<div class="cal-wd">'+w+'</div>';});
   for(var b=0;b<start;b++)html+='<div></div>';
-  for(var d=1;d<=days;d++){var date=y+'-'+p2(m+1)+'-'+p2(d),cls=has[date]?'cal-day has':'cal-day';html+='<button class="'+cls+'" '+(has[date]?'onclick="openDailyDetail(\''+date+'\')"':'disabled')+'>'+d+'</button>';}
+  for(var d=1;d<=days;d++){var date=y+'-'+p2(m+1)+'-'+p2(d),hasIt=has.hasOwnProperty(date),cls=hasIt?('cal-day has '+(has[date]||'')).trim():'cal-day';html+='<button class="'+cls+'" '+(hasIt?'onclick="openDailyDetail(\''+date+'\')"':'disabled')+'>'+d+'</button>';}
   html+='</div></div>';el.innerHTML=html;
 }
 function moveHistMonth(delta){var p=(S.histMonth||toDay().slice(0,7)).split('-'),d=new Date(parseInt(p[0],10),parseInt(p[1],10)-1+delta,1);S.histMonth=d.getFullYear()+'-'+p2(d.getMonth()+1);renderHistoryCalendar();}
