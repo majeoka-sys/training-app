@@ -767,7 +767,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="date-bar"><div class="dt" id="h-dt"></div><div class="si" id="h-si"></div></div>
     <div class="summary-card" id="h-sum"></div>
   </div>
-  <div class="app-version">UI v3.10 exercise-manager</div>
+  <div class="app-version">UI v3.12 interval-route-fix</div>
   <div class="home-elapsed-wrap"><span class="elapsed-chip" data-elapsed-chip="home"></span></div>
   <div class="backup-warn" id="home-backup-warn">バックアップから7日以上経っています</div>
   <div class="scroll"><div class="home-sec">Body Parts</div><div class="parts-stack" id="h-pg"></div></div>
@@ -1085,7 +1085,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="hdr-title">設定</div><div class="hdr-r"></div>
   </div>
   <div class="scroll"><div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
-    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.9 pr-source-cleanup</div></div></div>
+    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.12 interval-route-fix</div></div></div>
     <div class="panel">
       <div class="panel-h">端末・同期</div>
       <div class="panel-b form-grid">
@@ -1442,7 +1442,7 @@ var S={part:null,ex:null,sess:null,exE:null,
   tS:0,tTgt:90,tPau:false,tEl:0,tIv:null,tBp:false,tAutoTo:null,tGoTo:null,
   intervalCtx:null,
   postStart:0,postIv:null,postElapsed:0,postActive:false,lastPostWait:0,
-  strengthDelegateInstalled:false,lastDirectActionAt:0,lastDirectRole:'',
+  strengthDelegateInstalled:false,lastDirectActionAt:0,lastDirectRole:'',strengthActionBusy:false,
   wk:null,wkIv:null,wkStartMs:0,wkElapsedAdd:0,wkPaused:false,wkPauseAt:0,wkSi:-1,wkEi:-1,
   recType:null,recRef:null,histPart:null,histEx:null,histDate:null,histMonth:null,globalElapsedIv:null,nextDraft:null,
   numT:null,numStr:'0'};
@@ -2276,10 +2276,13 @@ function dumpVisibleButtons(){
   }catch(e){dbg('dumpVisibleButtons error '+e.message);}
 }
 function directActionGuard(role){
-  var now=Date.now();
-  if(S.lastDirectRole===role&&now-S.lastDirectActionAt<650){dbg('direct duplicate ignored '+role);return false;}
-  S.lastDirectRole=role;S.lastDirectActionAt=now;return true;
+  var now=Date.now(),active=activeScreenId();
+  if(role&&(role.indexOf('strength-')===0)&&active&&active!=='sset'){dbg('strength action ignored on screen='+active+' role='+role);return false;}
+  if(S.strengthActionBusy){dbg('strength action busy ignored '+role);return false;}
+  if(S.lastDirectRole===role&&now-S.lastDirectActionAt<1200){dbg('direct duplicate ignored '+role);return false;}
+  S.lastDirectRole=role;S.lastDirectActionAt=now;S.strengthActionBusy=true;return true;
 }
+function releaseStrengthActionSoon(){setTimeout(function(){S.strengthActionBusy=false;},900);}
 function roleTarget(el){
   while(el&&el!==document){
     if(el.getAttribute&&el.getAttribute('data-role'))return el;
@@ -2301,8 +2304,7 @@ function installStrengthActionDelegates(){
   if(S.strengthDelegateInstalled)return;
   S.strengthDelegateInstalled=true;
   document.addEventListener('click',function(e){handleStrengthRoleEvent(e,'delegated click');},true);
-  document.addEventListener('touchend',function(e){handleStrengthRoleEvent(e,'delegated touchend');},true);
-  dbg('strength action delegates installed');
+  dbg('strength action delegates installed click-only');
 }
 function bindStrengthActionButtons(){
   dbg('bindStrengthActionButtons called');
@@ -2334,20 +2336,22 @@ function bindStrengthActionButtons(){
 }
 function handleStrengthAchieveDirect(){
   dbg('handleStrengthAchieveDirect called');
-  if(!isStrengthPart(S.part)){dbg('not strength part='+S.part);dumpVisibleButtons();return;}
-  if(isCardioPart(S.part,S.ex)||isWalkingEx(S.part,S.ex)){dbg('direct route skip cardio/walking');return;}
+  if(!isStrengthPart(S.part)){dbg('not strength part='+S.part);dumpVisibleButtons();S.strengthActionBusy=false;return;}
+  if(isCardioPart(S.part,S.ex)||isWalkingEx(S.part,S.ex)){dbg('direct route skip cardio/walking');S.strengthActionBusy=false;return;}
   if(S.postActive)stopPostIntervalStopwatch();
   var savedSet=saveStrengthSetDirect(true,S.r);
-  if(!savedSet){dbg('saveStrengthSetDirect returned null');return;}
+  if(!savedSet){dbg('saveStrengthSetDirect returned null');S.strengthActionBusy=false;return;}
   dbg('savedSet direct part='+savedSet.part+' ex='+savedSet.exercise);
   startStrengthIntervalDirect(savedSet);
+  releaseStrengthActionSoon();
 }
 function handleStrengthFailDirect(){
   dbg('handleStrengthFailDirect called');
-  if(!isStrengthPart(S.part)){dbg('not strength part='+S.part);dumpVisibleButtons();return;}
-  if(isCardioPart(S.part,S.ex)||isWalkingEx(S.part,S.ex)){dbg('direct route skip cardio/walking');return;}
+  if(!isStrengthPart(S.part)){dbg('not strength part='+S.part);dumpVisibleButtons();S.strengthActionBusy=false;return;}
+  if(isCardioPart(S.part,S.ex)||isWalkingEx(S.part,S.ex)){dbg('direct route skip cardio/walking');S.strengthActionBusy=false;return;}
   if(S.postActive)stopPostIntervalStopwatch();
   openFail();
+  releaseStrengthActionSoon();
 }
 function saveStrengthSetDirect(ach,actualReps){
   dbg('saveStrengthSetDirect called ach='+ach+' actual='+actualReps);
@@ -2506,7 +2510,8 @@ function confirmFail(){
   hideFail();
   if(isStrengthPart(S.part)&&!isCardioPart(S.part,S.ex)&&!isWalkingEx(S.part,S.ex)){
     var savedSet=saveStrengthSetDirect(false,S.failR);
-    if(savedSet){dbg('savedSet direct part='+savedSet.part+' ex='+savedSet.exercise);startStrengthIntervalDirect(savedSet);}
+    if(savedSet){dbg('savedSet direct part='+savedSet.part+' ex='+savedSet.exercise);startStrengthIntervalDirect(savedSet);releaseStrengthActionSoon();}
+    else S.strengthActionBusy=false;
     return;
   }
   saveSet(false,S.failR);
@@ -2643,8 +2648,8 @@ function goNextStrengthSetAfterInterval(auto){
   try{saveRest();}catch(e){dbg('saveRest before next error: '+e.message);}
   if(S.tIv){clearInterval(S.tIv);S.tIv=null;}
   if(S.tAutoTo){clearTimeout(S.tAutoTo);S.tAutoTo=null;}
-  dbg('showing GO overlay before next set');
-  showGoOverlay(function(){
+  dbg('showing next set screen directly');
+  (function(){
     var sets=S.exE&&S.exE.sets?S.exE.sets:[],last=sets.length?sets[sets.length-1]:null;
     if(S.nextDraft){S.w=Number(S.nextDraft.weight)||0;S.r=Math.max(1,parseInt(S.nextDraft.reps,10)||10);S.vari=S.nextDraft.variation||S.vari||'標準';dbg('apply nextSetDraft weight='+S.w+' reps='+S.r);S.nextDraft=null;}
     else if(last){S.w=Number(last.weight_kg)||S.w||0;S.r=Number(last.reps)||S.r||10;S.vari=last.variation||last.memo||S.vari||'標準';}
@@ -2656,7 +2661,7 @@ function goNextStrengthSetAfterInterval(auto){
     var setNo=(S.exE&&S.exE.sets?S.exE.sets.length+1:1);
     dbg('next set screen shown set='+setNo);
     dbgScreenState();
-  });
+  })();
 }
 function nextSet(auto){
   if(!auto)beep(550,0.2);
