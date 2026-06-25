@@ -767,7 +767,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="date-bar"><div class="dt" id="h-dt"></div><div class="si" id="h-si"></div></div>
     <div class="summary-card" id="h-sum"></div>
   </div>
-  <div class="app-version">UI v3.12 interval-route-fix</div>
+  <div class="app-version">UI v3.14 stale-7days</div>
   <div class="home-elapsed-wrap"><span class="elapsed-chip" data-elapsed-chip="home"></span></div>
   <div class="backup-warn" id="home-backup-warn">バックアップから7日以上経っています</div>
   <div class="scroll"><div class="home-sec">Body Parts</div><div class="parts-stack" id="h-pg"></div></div>
@@ -1085,7 +1085,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="hdr-title">設定</div><div class="hdr-r"></div>
   </div>
   <div class="scroll"><div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
-    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.12 interval-route-fix</div></div></div>
+    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.14 stale-7days</div></div></div>
     <div class="panel">
       <div class="panel-h">端末・同期</div>
       <div class="panel-b form-grid">
@@ -1631,9 +1631,9 @@ function renderHome(){
       var btn=document.createElement('div');btn.className='pcard '+partClass(part);
       var ld=pL[part],df=diffD(ld);
       var cnt=pC[part]||0;
-      var al=ld&&df>=3;
+      var al=ld&&df>=7;
       if(al)btn.className+=' al';
-      btn.innerHTML='<div class="picon">'+partIcon(part)+'</div><div class="pbody"><div class="pn">'+esc(part)+'</div><div class="pl">'+(al?'間隔が空いています':'今日の部位を選択')+'</div>'
+      btn.innerHTML='<div class="picon">'+partIcon(part)+'</div><div class="pbody"><div class="pn">'+esc(part)+'</div><div class="pl">'+(al?'7日以上空いています':'今日の部位を選択')+'</div>'
         +'<div class="pmeta"><div class="pm"><div class="pk">最終実施</div><div class="pv">'+esc(dLbl(ld))+'</div></div>'
         +'<div class="pm"><div class="pk">30日</div><div class="pv">'+cnt+'回</div></div></div></div><div class="pgo">›</div>'
         +(al?'<div class="ab">注意</div>':'');
@@ -2636,7 +2636,7 @@ function showGoOverlay(cb){
   beep(1200,0.12);setTimeout(function(){beep(1600,0.2);},150);
   el.classList.add('on');
   if(S.tGoTo)clearTimeout(S.tGoTo);
-  S.tGoTo=setTimeout(function(){S.tGoTo=null;el.classList.remove('on');cb&&cb();},2000);
+  S.tGoTo=setTimeout(function(){S.tGoTo=null;el.classList.remove('on');cb&&cb();},900);
 }
 function hideGoOverlay(){
   var el=document.getElementById('sgo');if(el)el.classList.remove('on');
@@ -2648,8 +2648,8 @@ function goNextStrengthSetAfterInterval(auto){
   try{saveRest();}catch(e){dbg('saveRest before next error: '+e.message);}
   if(S.tIv){clearInterval(S.tIv);S.tIv=null;}
   if(S.tAutoTo){clearTimeout(S.tAutoTo);S.tAutoTo=null;}
-  dbg('showing next set screen directly');
-  (function(){
+  dbg('showing GO overlay before next set');
+  showGoOverlay(function(){
     var sets=S.exE&&S.exE.sets?S.exE.sets:[],last=sets.length?sets[sets.length-1]:null;
     if(S.nextDraft){S.w=Number(S.nextDraft.weight)||0;S.r=Math.max(1,parseInt(S.nextDraft.reps,10)||10);S.vari=S.nextDraft.variation||S.vari||'標準';dbg('apply nextSetDraft weight='+S.w+' reps='+S.r);S.nextDraft=null;}
     else if(last){S.w=Number(last.weight_kg)||S.w||0;S.r=Number(last.reps)||S.r||10;S.vari=last.variation||last.memo||S.vari||'標準';}
@@ -2661,7 +2661,7 @@ function goNextStrengthSetAfterInterval(auto){
     var setNo=(S.exE&&S.exE.sets?S.exE.sets.length+1:1);
     dbg('next set screen shown set='+setNo);
     dbgScreenState();
-  })();
+  });
 }
 function nextSet(auto){
   if(!auto)beep(550,0.2);
