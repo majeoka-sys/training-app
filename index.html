@@ -74,7 +74,7 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
 @media (max-width:430px){.global-tools{min-width:72px;gap:5px}.home-mini{padding:7px 8px;font-size:11px}.elapsed-chip{font-size:10px;padding:5px 7px}.hdr-title{font-size:18px}}
 
 /* Daily history */
-.hist-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px 16px 8px;}
+.hist-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:14px 16px 8px;}
 .hist-tab{min-height:42px;border:1px solid var(--line2);background:#151A22;color:var(--text2);border-radius:999px;font-size:14px;font-weight:900;cursor:pointer;}
 .hist-tab.on{background:linear-gradient(135deg,var(--blue),var(--cyan));color:#fff;border-color:rgba(255,255,255,.16);}
 .daily-cal{margin:8px 16px 14px;padding:12px;background:#101722;border:1px solid var(--line);border-radius:16px;}
@@ -107,6 +107,57 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
 .bar-fill.part-shoulder{--partA:#F97316;}
 .bar-fill.part-core{--partA:#F4C84A;}
 .bar-fill.part-leg{--partA:#3B82F6;}
+.graph-page{padding:4px 16px calc(32px + var(--safe-b));}
+.graph-card{margin-top:12px;padding:15px;background:linear-gradient(155deg,#131D2A,#0D141F);border:1px solid rgba(255,255,255,.09);border-radius:18px;box-shadow:0 10px 24px rgba(0,0,0,.24);overflow:hidden;}
+.graph-card.global{border-color:rgba(34,211,238,.3);background:linear-gradient(145deg,rgba(34,211,238,.1),rgba(76,141,255,.08));}
+.graph-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;}
+.graph-title{font-size:18px;font-weight:900;color:var(--text);line-height:1.25;}
+.graph-kicker{font-size:10px;color:var(--cyan);font-weight:900;letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px;}
+.graph-sub{font-size:11px;color:var(--text3);line-height:1.45;margin-top:4px;}
+.graph-controls{display:flex;flex-direction:column;gap:10px;}
+.graph-control-label{font-size:11px;color:var(--text2);font-weight:900;}
+.graph-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.graph-pill{min-height:34px;min-width:54px;flex:1 1 auto;padding:7px 10px;border:1px solid var(--line2);border-radius:999px;background:#151A22;color:var(--text2);font-size:11px;font-weight:900;cursor:pointer;white-space:nowrap;}
+.graph-pill.on{border-color:rgba(34,211,238,.55);background:linear-gradient(135deg,rgba(76,141,255,.42),rgba(34,211,238,.25));color:#fff;}
+.graph-select{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line2);border-radius:12px;background:#151A22;color:var(--text);font-weight:800;outline:none;}
+.graph-empty{padding:22px 10px;text-align:center;color:var(--text3);font-size:13px;}
+.graph-card .bar-chart{margin:10px 0 0;}
+.graph-card .bar-row{grid-template-columns:40px 1fr 78px;}
+.graph-card .bar-note{margin:10px 0 0;}
+.graph-legend{display:flex;flex-wrap:wrap;gap:8px 12px;margin-top:10px;}
+.graph-legend-item{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--text2);font-weight:800;}
+.graph-dot{width:9px;height:9px;border-radius:50%;background:var(--partA,var(--cyan));}
+.graph-color.part-chest{--partA:#F43F5E}.graph-color.part-arm{--partA:#A855F7}.graph-color.part-back{--partA:#22C55E}.graph-color.part-shoulder{--partA:#F97316}.graph-color.part-core{--partA:#F4C84A}.graph-color.part-leg{--partA:#3B82F6}.graph-color.part-cardio{--partA:#06B6D4}
+.month-scroll,.heat-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:5px;}
+.month-chart{height:210px;display:flex;align-items:flex-end;gap:8px;min-width:max-content;padding:8px 3px 0;}
+.month-col{width:42px;height:195px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;}
+.month-value{height:16px;font-size:9px;color:var(--text2);font-weight:900;white-space:nowrap;}
+.month-stack-wrap{height:150px;width:30px;display:flex;align-items:flex-end;}
+.month-stack{width:100%;min-height:2px;border-radius:7px 7px 3px 3px;overflow:hidden;display:flex;flex-direction:column-reverse;background:#151A22;box-shadow:0 0 0 1px rgba(255,255,255,.05);}
+.month-seg{width:100%;min-height:1px;background:var(--partA,var(--cyan));}
+.month-label{height:18px;font-size:9px;color:var(--text3);font-weight:800;white-space:nowrap;}
+.graph-svg-wrap{border:1px solid rgba(255,255,255,.06);background:rgba(5,9,15,.6);border-radius:14px;padding:8px;margin-top:8px;}
+.graph-svg{display:block;width:100%;height:210px;overflow:visible;}
+.graph-line-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;font-size:11px;color:var(--text2);font-weight:900;}
+.line-key{display:inline-flex;align-items:center;gap:6px}.line-key:before{content:"";width:18px;height:3px;border-radius:3px;background:var(--lineC,var(--cyan));}
+.heat-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.heat-year{font-size:18px;font-weight:900;color:var(--text);}
+.heat-nav{border:1px solid var(--line2);background:#1E2633;color:var(--text);border-radius:999px;padding:7px 11px;font-weight:900;cursor:pointer;}
+.heat-grid{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,12px);grid-auto-columns:12px;gap:3px;min-width:max-content;padding:3px;}
+.heat-cell{width:12px;height:12px;border-radius:3px;background:#171D26;box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);}
+.heat-cell.has{background:var(--partA,var(--cyan));}
+.heat-note{display:flex;justify-content:space-between;gap:10px;margin-top:8px;color:var(--text3);font-size:10px;}
+.ach-list,.rank-list{display:flex;flex-direction:column;gap:9px;margin-top:10px;}
+.ach-row{display:grid;grid-template-columns:58px 1fr 62px;gap:8px;align-items:center;}
+.ach-label,.rank-label{font-size:11px;color:var(--text2);font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ach-track{height:16px;display:flex;border-radius:9px;overflow:hidden;background:#151A22;border:1px solid rgba(255,255,255,.05);}
+.ach-ok{background:#25C46B}.ach-ng{background:#EF4B4B}.ach-val{font-size:10px;color:var(--text2);font-weight:900;text-align:right;}
+.rank-row{display:grid;grid-template-columns:minmax(92px,1.2fr) 2fr 68px;gap:8px;align-items:center;}
+.rank-track{height:13px;border-radius:8px;overflow:hidden;background:#151A22;}
+.rank-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,var(--blue),var(--cyan));}
+.rank-val{font-size:10px;color:var(--text2);font-weight:900;text-align:right;}
+.graph-footnote{margin-top:14px;padding:12px;border-radius:12px;background:rgba(255,255,255,.035);color:var(--text3);font-size:11px;line-height:1.6;}
+@media (max-width:430px){.hist-tabs{gap:5px}.hist-tab{font-size:11px;min-height:38px}.graph-page{padding-left:12px;padding-right:12px}.graph-card{padding:13px}.graph-title{font-size:16px}.ach-row{grid-template-columns:52px 1fr 56px}.rank-row{grid-template-columns:92px 1fr 62px}}
 .daily-card{margin:0 16px 10px;padding:15px;background:linear-gradient(160deg,#16202E,#0F1623);border:1px solid rgba(255,255,255,.08);border-radius:16px;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.28);}
 .daily-card:active{transform:scale(.99);}
 .daily-date{font-size:20px;font-weight:900;color:var(--text);}
@@ -247,6 +298,8 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
 .set-nav{display:flex;align-items:center;padding:10px 8px;}
 .set-name-lbl{flex:1;text-align:center;font-size:21px;font-weight:900;overflow:hidden;
   white-space:nowrap;text-overflow:ellipsis;padding:0 4px;}
+#sset .set-name-lbl,#si .hdr-title{text-align:right;padding-right:10px;}
+#si .hdr-title{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
 .set-ctr{padding:10px 16px 12px;border-top:1px solid #252525;}
 .set-head{display:flex;justify-content:center;align-items:center;}
 .setcount-hero{text-align:center;background:#18202B;border:1px solid var(--line2);border-radius:10px;padding:10px 18px;min-width:128px;max-width:180px;}
@@ -767,7 +820,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="date-bar"><div class="dt" id="h-dt"></div><div class="si" id="h-si"></div></div>
     <div class="summary-card" id="h-sum"></div>
   </div>
-  <div class="app-version">UI v3.14 stale-7days</div>
+  <div class="app-version">UI v3.15 graph-suite</div>
   <div class="home-elapsed-wrap"><span class="elapsed-chip" data-elapsed-chip="home"></span></div>
   <div class="backup-warn" id="home-backup-warn">バックアップから7日以上経っています</div>
   <div class="scroll"><div class="home-sec">Body Parts</div><div class="parts-stack" id="h-pg"></div></div>
@@ -1085,7 +1138,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="hdr-title">設定</div><div class="hdr-r"></div>
   </div>
   <div class="scroll"><div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
-    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.14 stale-7days</div></div></div>
+    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.15 graph-suite</div></div></div>
     <div class="panel">
       <div class="panel-h">端末・同期</div>
       <div class="panel-b form-grid">
@@ -2945,34 +2998,110 @@ function deleteCustomEx(){
 
 function showHistTab(mode){if(mode==='daily')showHistDaily();else if(mode==='part')showHistPartTop();else if(mode==='graph')showHistGraph();else showHistExerciseTop();}
 function histTabs(active){return '<div class="hist-tabs"><button class="hist-tab '+(active==='daily'?'on':'')+'" onclick="showHistTab(\'daily\')">日別</button><button class="hist-tab '+(active==='part'?'on':'')+'" onclick="showHistTab(\'part\')">部位別</button><button class="hist-tab '+(active==='exercise'?'on':'')+'" onclick="showHistTab(\'exercise\')">種目別</button><button class="hist-tab '+(active==='graph'?'on':'')+'" onclick="showHistTab(\'graph\')">グラフ</button></div>';}
-function showHistGraph(){
-  var bd=document.getElementById('hist-bd'),ss=gS(),cut=new Date();cut.setDate(cut.getDate()-28);
-  var counts={};for(var pi=0;pi<STRENGTH_PARTS.length;pi++)counts[STRENGTH_PARTS[pi]]=0;
-  var walkCount=0;
-  for(var i=0;i<ss.length;i++){
-    var s=ss[i];if(!s.date)continue;var sd=new Date(s.date);if(isNaN(sd)||sd<cut)continue;
-    var exs=s.exercises||[];
-    for(var j=0;j<exs.length;j++){
-      var ex=exs[j];
-      if(ex.type==='walking'||ex.cardio){walkCount++;continue;}
-      var p=ex.part;if(counts[p]===undefined)continue;
-      counts[p]+=(ex.sets||[]).length;
+var GSTATE={period:'12m',metric:'sets',exerciseKey:'',heatYear:0,achMode:'month',walkMetric:'min',rankMetric:'visits'};
+function graphDate(v){var m=String(v||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?new Date(Number(m[1]),Number(m[2])-1,Number(m[3])):null;}
+function graphDateKey(d){return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());}
+function graphMonthKey(v){return String(v||'').slice(0,7);}
+function graphPeriodLabel(){return{'4w':'直近4週','3m':'直近3か月','6m':'直近6か月','12m':'直近12か月','all':'全期間'}[GSTATE.period]||'直近12か月';}
+function graphMetricLabel(){return GSTATE.metric==='volume'?'総重量':'セット数';}
+function graphPeriodCutoff(){var d=new Date(),n={'4w':28,'3m':92,'6m':183,'12m':366}[GSTATE.period];if(!n)return null;d.setHours(0,0,0,0);d.setDate(d.getDate()-n+1);return d;}
+function graphFiltered(rows){var cut=graphPeriodCutoff();return(rows||[]).filter(function(r){var d=graphDate(r.date);return d&&(!cut||d>=cut);});}
+function graphCompact(n){n=Number(n)||0;if(n>=100000)return(n/10000).toFixed(0)+'万';if(n>=10000)return(n/10000).toFixed(1)+'万';if(n>=1000)return(n/1000).toFixed(1)+'k';return String(Math.round(n*10)/10);}
+function graphValue(n,metric){if(metric==='volume')return graphCompact(n)+'kg';if(metric==='visits')return Math.round(n)+'回';if(metric==='km')return(Number(n)||0).toFixed(1)+'km';if(metric==='cal')return Math.round(n)+'kcal';if(metric==='hr')return Math.round(n)+'bpm';if(metric==='min')return Math.round(n)+'分';return Math.round(n)+'set';}
+function graphE1RM(w,r){w=Number(w)||0;r=Math.min(30,Number(r)||0);return w&&r?w*(1+r/30):0;}
+function graphData(){
+  var strength=[],walks=[],visitMap={},modernKeys={},ss=gS();
+  function addVisit(date,part,name,sets,volume){var key=date+'|'+part+'|'+name,v=visitMap[key];if(!v)v=visitMap[key]={date:date,part:part,name:name,sets:0,volume:0};v.sets+=Number(sets)||0;v.volume+=Number(volume)||0;}
+  for(var si=0;si<ss.length;si++){
+    var s=ss[si],date=s&&s.date;if(!graphDate(date))continue;var exs=s.exercises||[];
+    for(var ei=0;ei<exs.length;ei++){
+      var ex=exs[ei],part=ex.part||'',name=String(ex.parent_name||ex.name||'種目'),key=date+'|'+part+'|'+name;
+      if(ex.type==='walking'||ex.cardio){var c=ex.cardio||{},hrs=[],cps=c.checkpoints||[];for(var hi=0;hi<cps.length;hi++){var hv=Number(cps[hi].heartRate||0);if(hv>0)hrs.push(hv);}walks.push({date:date,min:Number(c.duration||c.finalTime||0)||0,km:Number(c.finalDistance||c.distance||0)||0,cal:Number(c.finalCalories||c.calories||0)||0,hr:hrs.length?hrs.reduce(function(a,b){return a+b;},0)/hrs.length:0});continue;}
+      if(!isStrengthPart(part))continue;var sets=ex.sets||[],visitVol=0;if(!sets.length)continue;modernKeys[key]=1;
+      for(var ki=0;ki<sets.length;ki++){var st=sets[ki],w=Number(st.weight_kg||st.weight||0)||0,r=Number(st.actualReps||st.actual_reps||st.reps||0)||0,vol=calcSetVolume(st);visitVol+=vol;strength.push({date:date,part:part,name:name,sets:1,volume:vol,weight:w,reps:r,e1rm:graphE1RM(w,r),achieved:typeof st.achieved==='boolean'?st.achieved:null,pr:!!st.pr_updated,source:'live'});}
+      addVisit(date,part,name,sets.length,visitVol);
     }
   }
-  if(HD)for(var h=0;h<HD.length;h++){
-    var hh=HD[h];if(!hh||!hh.d)continue;var hd=new Date(hh.d);if(isNaN(hd)||hd<cut)continue;
-    if(counts[hh.p]===undefined)continue;
-    counts[hh.p]+=legacySetCount(hh);
+  if(HD)for(var li=0;li<HD.length;li++){
+    var h=HD[li];if(!h||!graphDate(h.d)||!isStrengthPart(h.p))continue;var hn=String(h.e||'');if(!hn||hn==='NaN')continue;var hk=h.d+'|'+h.p+'|'+hn;if(modernKeys[hk])continue;
+    var cnt=legacySetCount(h),vol=legacyVolume(h),rs=parseLegacyReps(h.r),repMax=rs.length?Math.max.apply(null,rs):0,w=Number(h.w||0)||0;
+    strength.push({date:h.d,part:h.p,name:hn,sets:cnt,volume:vol,weight:w,reps:repMax,e1rm:graphE1RM(w,repMax),achieved:null,pr:false,source:'legacy'});addVisit(h.d,h.p,hn,cnt,vol);
   }
-  var max=1;for(var pj=0;pj<STRENGTH_PARTS.length;pj++)if(counts[STRENGTH_PARTS[pj]]>max)max=counts[STRENGTH_PARTS[pj]];
-  var rows='';
-  for(var pk=0;pk<STRENGTH_PARTS.length;pk++){
-    var p2=STRENGTH_PARTS[pk],n=counts[p2]||0,pct=Math.round(n/max*100);
-    rows+='<div class="bar-row"><div class="bar-lbl">'+esc(p2)+'</div><div class="bar-track"><div class="bar-fill '+partClass(p2)+'" style="width:'+pct+'%"></div></div><div class="bar-val">'+n+'set</div></div>';
-  }
-  bd.innerHTML=histTabs('graph')+'<div class="sec-title">部位別バランス(直近4週)</div><div class="bar-chart">'+rows+'</div><div class="bar-note">有酸素(ウォーキング等): 直近4週で'+walkCount+'回</div>';
-  show('shist');
+  return{strength:strength,walks:walks,visits:Object.keys(visitMap).map(function(k){return visitMap[k];})};
 }
+function graphMonthKeys(rows){
+  var end=new Date();end=new Date(end.getFullYear(),end.getMonth(),1);var start,count={'4w':2,'3m':3,'6m':6,'12m':12}[GSTATE.period];
+  if(GSTATE.period==='all'){var ds=(rows||[]).map(function(r){return graphDate(r.date);}).filter(Boolean).sort(function(a,b){return a-b;});start=ds.length?new Date(ds[0].getFullYear(),ds[0].getMonth(),1):new Date(end.getFullYear(),end.getMonth()-11,1);}else start=new Date(end.getFullYear(),end.getMonth()-(count||12)+1,1);
+  var out=[],d=new Date(start);while(d<=end){out.push(d.getFullYear()+'-'+p2(d.getMonth()+1));d.setMonth(d.getMonth()+1);}return out;
+}
+function graphPill(value,label,current,fn){return '<button class="graph-pill '+(value===current?'on':'')+'" onclick="'+fn+'(\''+value+'\')">'+label+'</button>';}
+function graphPartLegend(){var h='<div class="graph-legend">';for(var i=0;i<STRENGTH_PARTS.length;i++){var p=STRENGTH_PARTS[i];h+='<span class="graph-legend-item"><i class="graph-dot graph-color '+partClass(p)+'"></i>'+esc(p)+'</span>';}return h+'</div>';}
+function graphHead(kicker,title,sub){return '<div class="graph-head"><div><div class="graph-kicker">'+kicker+'</div><div class="graph-title">'+title+'</div>'+(sub?'<div class="graph-sub">'+sub+'</div>':'')+'</div></div>';}
+function setGraphPeriod(v){GSTATE.period=v;renderHistGraph(true);}
+function setGraphMetric(v){GSTATE.metric=v;renderHistGraph(true);}
+function setGraphExercise(v){GSTATE.exerciseKey=v;renderHistGraph(true);}
+function setGraphAchMode(v){GSTATE.achMode=v;renderHistGraph(true);}
+function setGraphWalkMetric(v){GSTATE.walkMetric=v;renderHistGraph(true);}
+function setGraphRankMetric(v){GSTATE.rankMetric=v;renderHistGraph(true);}
+function moveGraphHeatYear(delta){GSTATE.heatYear+=delta;renderHistGraph(true);}
+function renderGraphControls(){return '<div class="graph-card global">'+graphHead('GRAPH DASHBOARD','グラフ分析','期間と指標は、部位別・月別・種目別・ウォーキングに連動します。')+'<div class="graph-controls"><div><div class="graph-control-label">表示期間</div><div class="graph-pills">'+graphPill('4w','4週',GSTATE.period,'setGraphPeriod')+graphPill('3m','3か月',GSTATE.period,'setGraphPeriod')+graphPill('6m','6か月',GSTATE.period,'setGraphPeriod')+graphPill('12m','1年',GSTATE.period,'setGraphPeriod')+graphPill('all','全期間',GSTATE.period,'setGraphPeriod')+'</div></div><div><div class="graph-control-label">筋トレ指標</div><div class="graph-pills">'+graphPill('sets','セット数',GSTATE.metric,'setGraphMetric')+graphPill('volume','総重量',GSTATE.metric,'setGraphMetric')+'</div></div></div></div>';}
+function renderPartBalance(data){
+  var src=graphFiltered(data.strength),counts={},metric=GSTATE.metric;for(var i=0;i<STRENGTH_PARTS.length;i++)counts[STRENGTH_PARTS[i]]=0;
+  for(var j=0;j<src.length;j++)counts[src[j].part]+=(metric==='volume'?src[j].volume:src[j].sets)||0;var max=0;for(var k=0;k<STRENGTH_PARTS.length;k++)max=Math.max(max,counts[STRENGTH_PARTS[k]]||0);
+  var rows='';for(var n=0;n<STRENGTH_PARTS.length;n++){var p=STRENGTH_PARTS[n],v=counts[p]||0,pct=max?Math.round(v/max*100):0;rows+='<div class="bar-row"><div class="bar-lbl">'+esc(p)+'</div><div class="bar-track"><div class="bar-fill '+partClass(p)+'" style="width:'+pct+'%"></div></div><div class="bar-val">'+graphValue(v,metric)+'</div></div>';}
+  var wc=graphFiltered(data.walks).length;return '<div class="graph-card">'+graphHead('BALANCE','部位別バランス',graphPeriodLabel()+' / '+graphMetricLabel())+(max?'<div class="bar-chart">'+rows+'</div>':'<div class="graph-empty">選択期間の筋トレ記録はありません</div>')+'<div class="bar-note">有酸素（ウォーキング等）: '+wc+'回</div>'+graphPartLegend()+'</div>';
+}
+function renderMonthlyTrend(data){
+  var keys=graphMonthKeys(data.strength),src=graphFiltered(data.strength),metric=GSTATE.metric,map={};for(var i=0;i<keys.length;i++){map[keys[i]]={};for(var p=0;p<STRENGTH_PARTS.length;p++)map[keys[i]][STRENGTH_PARTS[p]]=0;}
+  for(var j=0;j<src.length;j++){var mk=graphMonthKey(src[j].date);if(map[mk])map[mk][src[j].part]+=(metric==='volume'?src[j].volume:src[j].sets)||0;}
+  var max=0,totals={};for(var k=0;k<keys.length;k++){var t=0;for(var q=0;q<STRENGTH_PARTS.length;q++)t+=map[keys[k]][STRENGTH_PARTS[q]]||0;totals[keys[k]]=t;max=Math.max(max,t);}
+  var cols='';for(var m=0;m<keys.length;m++){var key=keys[m],total=totals[key]||0,height=max?Math.max(total?3:0,Math.round(total/max*145)):0,segs='';for(var a=0;a<STRENGTH_PARTS.length;a++){var part=STRENGTH_PARTS[a],v=map[key][part]||0;if(v&&total)segs+='<div class="month-seg graph-color '+partClass(part)+'" style="height:'+(v/total*100).toFixed(2)+'%" title="'+esc(part)+' '+graphValue(v,metric)+'"></div>';}cols+='<div class="month-col"><div class="month-value">'+(total?graphCompact(total):'0')+'</div><div class="month-stack-wrap"><div class="month-stack" style="height:'+height+'px">'+segs+'</div></div><div class="month-label">'+key.slice(2).replace('-','/')+'</div></div>';}
+  return '<div class="graph-card">'+graphHead('MONTHLY','月別トレーニング量',graphPeriodLabel()+' / '+graphMetricLabel()+' / 部位別色分け')+(max?'<div class="month-scroll" data-graph-end><div class="month-chart">'+cols+'</div></div>':'<div class="graph-empty">月別データがありません</div>')+graphPartLegend()+'</div>';
+}
+function svgLineChart(points,series,unit){
+  if(!points.length)return '<div class="graph-empty">表示できるデータがありません</div>';var w=700,h=220,pl=42,pr=14,pt=16,pb=32,vals=[];
+  for(var s=0;s<series.length;s++)for(var i=0;i<points.length;i++)vals.push(Number(points[i][series[s].key])||0);var max=Math.max.apply(null,vals.concat([1]));max*=1.08;
+  function x(i){return points.length===1?w/2:pl+i*(w-pl-pr)/(points.length-1);}function y(v){return h-pb-(Number(v)||0)/max*(h-pt-pb);}
+  var svg='<svg class="graph-svg" viewBox="0 0 '+w+' '+h+'" role="img">';for(var g=0;g<=4;g++){var gy=pt+g*(h-pt-pb)/4,gv=max*(4-g)/4;svg+='<line x1="'+pl+'" y1="'+gy+'" x2="'+(w-pr)+'" y2="'+gy+'" stroke="rgba(255,255,255,.08)" stroke-width="1"/><text x="'+(pl-6)+'" y="'+(gy+4)+'" fill="#6F7A86" font-size="10" text-anchor="end">'+graphCompact(gv)+'</text>';}
+  for(var z=0;z<series.length;z++){var se=series[z],coords=[];for(var c=0;c<points.length;c++)coords.push(x(c).toFixed(1)+','+y(points[c][se.key]).toFixed(1));svg+='<polyline points="'+coords.join(' ')+'" fill="none" stroke="'+se.color+'" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>';for(var cc=0;cc<points.length;cc++){var val=Number(points[cc][se.key])||0;if(!val)continue;svg+='<circle cx="'+x(cc)+'" cy="'+y(val)+'" r="'+(points[cc].pr&&z===1?5:2.6)+'" fill="'+(points[cc].pr&&z===1?'#F4C84A':se.color)+'"><title>'+esc(points[cc].label)+' '+esc(se.label)+' '+(Math.round(val*10)/10)+esc(unit||'')+'</title></circle>';}}
+  svg+='<text x="'+pl+'" y="'+(h-8)+'" fill="#6F7A86" font-size="10">'+esc(points[0].label)+'</text><text x="'+(w-pr)+'" y="'+(h-8)+'" fill="#6F7A86" font-size="10" text-anchor="end">'+esc(points[points.length-1].label)+'</text></svg>';return '<div class="graph-svg-wrap">'+svg+'</div>';
+}
+function renderExerciseGrowth(data){
+  var meta={},vis=data.visits;for(var i=0;i<vis.length;i++){var v=vis[i],key=v.part+'|'+v.name;if(!meta[key])meta[key]={key:key,part:v.part,name:v.name,last:v.date,count:0};meta[key].count++;if(v.date>meta[key].last)meta[key].last=v.date;}
+  var weighted={};for(var w=0;w<data.strength.length;w++)if(data.strength[w].weight>0)weighted[data.strength[w].part+'|'+data.strength[w].name]=1;var arr=Object.keys(meta).filter(function(k){return weighted[k];}).map(function(k){return meta[k];}).sort(function(a,b){return b.last.localeCompare(a.last)||b.count-a.count;});
+  if(!arr.length)return '<div class="graph-card">'+graphHead('PROGRESS','種目別の成長','最高重量と推定1RM')+'<div class="graph-empty">重量付きの種目記録がありません</div></div>';
+  if(!GSTATE.exerciseKey||!meta[GSTATE.exerciseKey]||!weighted[GSTATE.exerciseKey])GSTATE.exerciseKey=arr[0].key;var opts='';for(var o=0;o<arr.length;o++)opts+='<option value="'+esc(arr[o].key)+'" '+(arr[o].key===GSTATE.exerciseKey?'selected':'')+'>'+esc(arr[o].part+' / '+arr[o].name)+'</option>';
+  var selected=GSTATE.exerciseKey.split('|'),part=selected.shift(),name=selected.join('|'),src=graphFiltered(data.strength).filter(function(r){return r.part===part&&r.name===name&&r.weight>0;}),map={};for(var j=0;j<src.length;j++){var r=src[j],d=map[r.date]||(map[r.date]={label:r.date.slice(5).replace('-','/'),date:r.date,weight:0,e1rm:0,pr:false});d.weight=Math.max(d.weight,r.weight);d.e1rm=Math.max(d.e1rm,r.e1rm);d.pr=d.pr||r.pr;}
+  var pts=Object.keys(map).sort().map(function(k){return map[k];});if(GSTATE.period==='all'&&pts.length>48){var mm={};for(var q=0;q<pts.length;q++){var mk=pts[q].date.slice(0,7),p=mm[mk]||(mm[mk]={label:mk.slice(2).replace('-','/'),date:mk,weight:0,e1rm:0,pr:false});p.weight=Math.max(p.weight,pts[q].weight);p.e1rm=Math.max(p.e1rm,pts[q].e1rm);p.pr=p.pr||pts[q].pr;}pts=Object.keys(mm).sort().map(function(k){return mm[k];});}
+  return '<div class="graph-card">'+graphHead('PROGRESS','種目別の成長',graphPeriodLabel()+' / PR日は金色')+'<select class="graph-select" onchange="setGraphExercise(this.value)">'+opts+'</select>'+svgLineChart(pts,[{key:'weight',label:'最高重量',color:'#4C8DFF'},{key:'e1rm',label:'推定1RM',color:'#F4C84A'}],'kg')+'<div class="graph-line-legend"><span class="line-key" style="--lineC:#4C8DFF">最高重量</span><span class="line-key" style="--lineC:#F4C84A">推定1RM</span></div><div class="graph-sub">推定1RM = 重量 × (1 + 回数 / 30)。31回以上は30回として計算します。</div></div>';
+}
+function renderHeatmap(data){
+  var years={},allRows=data.strength.concat(data.walks);for(var i=0;i<allRows.length;i++)if(graphDate(allRows[i].date))years[Number(allRows[i].date.slice(0,4))]=1;var ys=Object.keys(years).map(Number).sort(function(a,b){return a-b;});var latest=ys.length?ys[ys.length-1]:new Date().getFullYear();if(!GSTATE.heatYear)GSTATE.heatYear=latest;var minY=ys.length?ys[0]:latest,maxY=latest;GSTATE.heatYear=Math.max(minY,Math.min(maxY,GSTATE.heatYear));
+  var map={};function day(date){return map[date]||(map[date]={sets:0,volume:0,parts:{},walk:0});}for(var s=0;s<data.strength.length;s++){var r=data.strength[s];if(Number(r.date.slice(0,4))!==GSTATE.heatYear)continue;var d=day(r.date);d.sets+=r.sets;d.volume+=r.volume;d.parts[r.part]=(d.parts[r.part]||0)+r.sets;}for(var w=0;w<data.walks.length;w++){var wr=data.walks[w];if(Number(wr.date.slice(0,4))===GSTATE.heatYear)day(wr.date).walk++;}
+  var max=1;for(var dk in map)max=Math.max(max,map[dk].sets||map[dk].walk||0);var start=new Date(GSTATE.heatYear,0,1);start.setDate(start.getDate()-start.getDay());var end=new Date(GSTATE.heatYear,11,31);end.setDate(end.getDate()+(6-end.getDay()));var cells='';for(var cur=new Date(start);cur<=end;cur.setDate(cur.getDate()+1)){var key=graphDateKey(cur),inside=cur.getFullYear()===GSTATE.heatYear,v=map[key],cls='heat-cell',style='',title=key;if(v){var main='',mv=0;for(var p in v.parts)if(v.parts[p]>mv){main=p;mv=v.parts[p];}if(!main&&v.walk)main='有酸素';var level=Math.max(1,Math.ceil((v.sets||v.walk)/max*4));cls+=' has graph-color '+partClass(main);style='opacity:'+(0.25+level*.17).toFixed(2);title+=' / '+v.sets+'set'+(v.walk?' / 有酸素 '+v.walk+'回':'');}else if(!inside)style='opacity:.18';cells+='<span class="'+cls+'" style="'+style+'" title="'+esc(title)+'"></span>';}
+  return '<div class="graph-card">'+graphHead('CONSISTENCY','年間トレーニングカレンダー','多く行った日ほど濃く表示')+'<div class="heat-toolbar"><button class="heat-nav" onclick="moveGraphHeatYear(-1)" '+(GSTATE.heatYear<=minY?'disabled':'')+'>←</button><div class="heat-year">'+GSTATE.heatYear+'年</div><button class="heat-nav" onclick="moveGraphHeatYear(1)" '+(GSTATE.heatYear>=maxY?'disabled':'')+'>→</button></div><div class="heat-scroll" data-graph-end><div class="heat-grid">'+cells+'</div></div><div class="heat-note"><span>薄い</span><span>トレーニング量</span><span>濃い</span></div>'+graphPartLegend()+'</div>';
+}
+function graphWeekKey(date){var d=graphDate(date);if(!d)return'';var wd=(d.getDay()+6)%7;d.setDate(d.getDate()-wd);return graphDateKey(d);}
+function renderAchievement(data){
+  var src=data.strength.filter(function(r){return r.achieved!==null;}),keys=[],map={},subtitle='';if(GSTATE.achMode==='week'){var now=new Date(),end=graphWeekKey(graphDateKey(now)),ed=graphDate(end);for(var i=15;i>=0;i--){var d=new Date(ed);d.setDate(d.getDate()-i*7);keys.push(graphDateKey(d));}subtitle='直近16週';}else{keys=graphMonthKeys(src);subtitle=graphPeriodLabel();}for(var k=0;k<keys.length;k++)map[keys[k]]={ok:0,ng:0};
+  var filtered=GSTATE.achMode==='month'?graphFiltered(src):src;for(var j=0;j<filtered.length;j++){var key=GSTATE.achMode==='week'?graphWeekKey(filtered[j].date):graphMonthKey(filtered[j].date);if(map[key])filtered[j].achieved?map[key].ok++:map[key].ng++;}
+  var rows='',has=false;for(var q=0;q<keys.length;q++){var v=map[keys[q]],total=v.ok+v.ng;if(total)has=true;var okp=total?v.ok/total*100:0,ngp=total?v.ng/total*100:0,label=GSTATE.achMode==='week'?keys[q].slice(5).replace('-','/'):keys[q].slice(2).replace('-','/');rows+='<div class="ach-row"><div class="ach-label">'+label+'</div><div class="ach-track"><div class="ach-ok" style="width:'+okp+'%"></div><div class="ach-ng" style="width:'+ngp+'%"></div></div><div class="ach-val">'+(total?Math.round(okp)+'%':'-')+'</div></div>';}
+  return '<div class="graph-card">'+graphHead('ACHIEVEMENT','達成率の推移',subtitle+' / 緑=達成・赤=未達')+'<div class="graph-pills">'+graphPill('week','週別',GSTATE.achMode,'setGraphAchMode')+graphPill('month','月別',GSTATE.achMode,'setGraphAchMode')+'</div>'+(has?'<div class="ach-list">'+rows+'</div>':'<div class="graph-empty">達成／未達の記録がありません</div>')+'<div class="graph-sub">過去の埋め込み履歴には達成情報がないため、端末で記録したセットのみ集計します。</div></div>';
+}
+function renderWalkingTrend(data){
+  var labels={min:'合計時間',km:'合計距離',cal:'消費カロリー',hr:'平均心拍'},keys=graphMonthKeys(data.walks),src=graphFiltered(data.walks),map={};for(var i=0;i<keys.length;i++)map[keys[i]]={min:0,km:0,cal:0,hrSum:0,hrCount:0};for(var j=0;j<src.length;j++){var k=graphMonthKey(src[j].date),v=map[k];if(!v)continue;v.min+=src[j].min;v.km+=src[j].km;v.cal+=src[j].cal;if(src[j].hr){v.hrSum+=src[j].hr;v.hrCount++;}}
+  var pts=[],has=false;for(var q=0;q<keys.length;q++){var d=map[keys[q]],val=GSTATE.walkMetric==='hr'?(d.hrCount?d.hrSum/d.hrCount:0):d[GSTATE.walkMetric];if(val)has=true;pts.push({label:keys[q].slice(2).replace('-','/'),value:val});}
+  return '<div class="graph-card">'+graphHead('WALKING','ウォーキング推移',graphPeriodLabel()+' / '+labels[GSTATE.walkMetric])+'<div class="graph-pills">'+graphPill('min','時間',GSTATE.walkMetric,'setGraphWalkMetric')+graphPill('km','距離',GSTATE.walkMetric,'setGraphWalkMetric')+graphPill('cal','kcal',GSTATE.walkMetric,'setGraphWalkMetric')+graphPill('hr','心拍',GSTATE.walkMetric,'setGraphWalkMetric')+'</div>'+(has?svgLineChart(pts,[{key:'value',label:labels[GSTATE.walkMetric],color:'#22D3EE'}],GSTATE.walkMetric==='km'?'km':GSTATE.walkMetric==='hr'?'bpm':GSTATE.walkMetric==='cal'?'kcal':'分'):'<div class="graph-empty">選択期間のウォーキング記録はありません</div>')+'<div class="graph-line-legend"><span class="line-key" style="--lineC:#22D3EE">'+labels[GSTATE.walkMetric]+'</span></div></div>';
+}
+function renderRanking(data){
+  var map={};for(var i=0;i<data.visits.length;i++){var r=data.visits[i],key=r.part+'|'+r.name,v=map[key];if(!v)v=map[key]={part:r.part,name:r.name,visits:0,sets:0,volume:0};v.visits++;v.sets+=r.sets;v.volume+=r.volume;}
+  var metric=GSTATE.rankMetric,arr=Object.keys(map).map(function(k){return map[k];}).filter(function(v){return v[metric]>0;}).sort(function(a,b){return b[metric]-a[metric];}).slice(0,10),max=arr.length?arr[0][metric]:1,rows='';for(var j=0;j<arr.length;j++){var x=arr[j],pct=Math.round(x[metric]/max*100);rows+='<div class="rank-row"><div class="rank-label" title="'+esc(x.part+' / '+x.name)+'">'+esc(x.part+' / '+x.name)+'</div><div class="rank-track"><div class="rank-fill graph-color '+partClass(x.part)+'" style="width:'+pct+'%;background:var(--partA)"></div></div><div class="rank-val">'+graphValue(x[metric],metric)+'</div></div>';}
+  return '<div class="graph-card">'+graphHead('ALL-TIME TOP 10','全期間ランキング','種目別の累計')+'<div class="graph-pills">'+graphPill('visits','実施回数',metric,'setGraphRankMetric')+graphPill('sets','セット',metric,'setGraphRankMetric')+graphPill('volume','総重量',metric,'setGraphRankMetric')+'</div>'+(arr.length?'<div class="rank-list">'+rows+'</div>':'<div class="graph-empty">ランキングデータがありません</div>')+'</div>';
+}
+function renderHistGraph(preserve){
+  var bd=document.getElementById('hist-bd'),top=preserve?bd.scrollTop:0,data=graphData();bd.innerHTML=histTabs('graph')+'<div class="graph-page">'+renderGraphControls()+renderPartBalance(data)+renderMonthlyTrend(data)+renderExerciseGrowth(data)+renderHeatmap(data)+renderAchievement(data)+renderWalkingTrend(data)+renderRanking(data)+'<div class="graph-footnote">全期間のセット数・総重量・種目ランキングは古い埋め込み履歴も含みます。達成率・心拍などは値が保存されている記録だけを集計します。</div></div>';show('shist');if(preserve)bd.scrollTop=top;setTimeout(function(){var xs=document.querySelectorAll('[data-graph-end]');for(var i=0;i<xs.length;i++)xs[i].scrollLeft=xs[i].scrollWidth;},0);
+}
+function showHistGraph(){renderHistGraph(false);}
 function trainingDates(){var map={},out=[],ss=gS().filter(function(s){return s&&s.date;});for(var i=0;i<ss.length;i++)map[ss[i].date]=ss[i];if(HD)for(var h=0;h<HD.length;h++)if(HD[h]&&HD[h].d&&!map[HD[h].d])map[HD[h].d]={date:HD[h].d,exercises:[]};for(var d in map)out.push(map[d]);out.sort(function(a,b){return String(b.date).localeCompare(String(a.date));});return out;}
 function showHistDaily(){
   dbg('renderDailyHistory called');var bd=document.getElementById('hist-bd'),ss=trainingDates();dbg('daily records count='+ss.length);
