@@ -1244,6 +1244,7 @@ function showToast(msg,type){
 // =====================================================
 function gS(){try{var d=localStorage.getItem('ts');return d?JSON.parse(d):[];}catch(e){return[];}}
 function pS(a){try{localStorage.setItem('ts',JSON.stringify(a));}catch(e){}}
+function pruneEmptySession(ss,si){if(si>=0&&ss[si]&&!(ss[si].exercises||[]).length){ss.splice(si,1);return true;}return false;}
 function gU(){try{var d=localStorage.getItem('ue');return d?JSON.parse(d):{};}catch(e){return{};}}
 function pU(o){try{localStorage.setItem('ue',JSON.stringify(o));}catch(e){}}
 function gIP(){try{var d=localStorage.getItem('ip');return d?JSON.parse(d):{};}catch(e){return{};}}
@@ -1251,7 +1252,17 @@ function pIP(o){try{localStorage.setItem('ip',JSON.stringify(o));}catch(e){}}
 function gEM(){try{var d=localStorage.getItem('em');return d?JSON.parse(d):{};}catch(e){return{};}}
 function pEM(o){try{localStorage.setItem('em',JSON.stringify(o));}catch(e){}}
 function gCFG(){try{var d=localStorage.getItem('cfg');return d?JSON.parse(d):{};}catch(e){return{};}}
-function pCFG(o){try{localStorage.setItem('cfg',JSON.stringify(o));}catch(e){}}
+var deletedHistoryCache=null;
+function pCFG(o){try{localStorage.setItem('cfg',JSON.stringify(o));deletedHistoryCache=null;}catch(e){}}
+function deletedHistoryDates(){if(deletedHistoryCache)return deletedHistoryCache;var a=gCFG().deleted_history_dates;deletedHistoryCache=Array.isArray(a)?a:[];return deletedHistoryCache;}
+function isHistoryDateDeleted(date){return deletedHistoryDates().indexOf(String(date||''))>=0;}
+function markHistoryDateDeleted(date){
+  date=String(date||'');if(!date)return;
+  var c=gCFG(),a=Array.isArray(c.deleted_history_dates)?c.deleted_history_dates.slice():[];
+  if(a.indexOf(date)<0)a.push(date);c.deleted_history_dates=a;
+  if(c.daily_memos&&c.daily_memos.hasOwnProperty(date))delete c.daily_memos[date];
+  pCFG(c);
+}
 function gPO(){try{var d=localStorage.getItem('pr_overrides');return d?JSON.parse(d):{};}catch(e){return{};}}
 function pPO(o){try{localStorage.setItem('pr_overrides',JSON.stringify(o));}catch(e){}}
 function prKey(part,name){return part+'|'+name;}
@@ -1331,15 +1342,15 @@ function getPrev(part,name){
       if(ws.length>0){ws.sort(function(a,b){return a-b;});rs.sort(function(a,b){return a-b;});return{w:ws[Math.floor(ws.length/2)],r:rs[Math.floor(rs.length/2)]||10};}
     }
   }
-  if(HD){for(var i=HD.length-1;i>=0;i--){var h=HD[i];if(h.p===part&&h.e===name&&h.w){return{w:h.w,r:parseInt(String(h.r).split(' ')[0])||10};}}}
+  if(HD){for(var i=HD.length-1;i>=0;i--){var h=HD[i];if(!isHistoryDateDeleted(h.d)&&h.p===part&&h.e===name&&h.w){return{w:h.w,r:parseInt(String(h.r).split(' ')[0])||10};}}}
   var m=getME(part,name);
-  if(m)return{w:m.last_weight_kg||0,r:Math.round(m.last_reps)||10};
+  if(m&&!isHistoryDateDeleted(m.last_date))return{w:m.last_weight_kg||0,r:Math.round(m.last_reps)||10};
   return{w:0,r:10};
 }
 function getME(part,name){var l=(MD&&MD.master&&MD.master[part])||[];for(var i=0;i<l.length;i++)if(l[i].name===name)return l[i];return null;}
-function getPRItem(part,name){var ov=gPO()[prKey(part,name)];if(ov){return ov.deleted?null:ov;}if(!showReferencePR())return null;var pp=PR&&PR[part]&&PR[part][name];if(pp)return Object.assign({part:part,name:name,source:'reference-embedded'},pp);var m=getME(part,name);if(m&&m.pr_weight_kg)return{part:part,name:name,weight_kg:m.pr_weight_kg,date:m.last_date||'',reps:m.last_reps||'',source:'reference-master'};var hw=getHMax(part,name);return hw?{part:part,name:name,weight_kg:hw,date:'',reps:'',source:'reference-history'}:null;}
+function getPRItem(part,name){var ov=gPO()[prKey(part,name)];if(ov){return ov.deleted?null:ov;}if(!showReferencePR())return null;var pp=PR&&PR[part]&&PR[part][name];if(pp&&!isHistoryDateDeleted(pp.date))return Object.assign({part:part,name:name,source:'reference-embedded'},pp);var m=getME(part,name);if(m&&m.pr_weight_kg&&!isHistoryDateDeleted(m.last_date))return{part:part,name:name,weight_kg:m.pr_weight_kg,date:m.last_date||'',reps:m.last_reps||'',source:'reference-master'};var hw=getHMax(part,name);return hw?{part:part,name:name,weight_kg:hw,date:'',reps:'',source:'reference-history'}:null;}
 function getPRV(part,name){var item=getPRItem(part,name);var w=Number(item&&item.weight_kg);return validPRValue(w,item&&item.reps,part,name)?w:0;}
-function getHMax(part,name){var max=0;if(HD)for(var i=0;i<HD.length;i++){var h=HD[i];if(h.p===part&&h.e===name&&h.w&&h.w>max)max=h.w;}return max;}
+function getHMax(part,name){var max=0;if(HD)for(var i=0;i<HD.length;i++){var h=HD[i];if(!isHistoryDateDeleted(h.d)&&h.p===part&&h.e===name&&h.w&&h.w>max)max=h.w;}return max;}
 function getSMax(part,name){var max=0,ss=gS();for(var i=0;i<ss.length;i++){var s=ss[i];for(var j=0;j<(s.exercises||[]).length;j++){var ex=s.exercises[j];if(ex.part===part&&(ex.name===name||ex.parent_name===name)){for(var k=0;k<(ex.sets||[]).length;k++){var st=ex.sets[k],w=Number(st.weight_kg)||0;if(validPRSet(ex,st)&&w>max)max=w;}}}}return max;}
 function isStrengthPart(part){return STRENGTH_PARTS.indexOf(part)>=0;}
 function isCardioPart(part,exercise){return part==='有酸素'||String(exercise||'').indexOf('ウォーキング')>=0;}
@@ -1608,17 +1619,21 @@ function ensureGlobalHeaderTools(){
     var last=n.lastElementChild;if(last&&last.textContent.trim()==='')last.replaceWith(t);else n.appendChild(t);
   }
 }
+function exerciseHasTrainingActivity(ex){
+  if(!ex)return false;if((ex.sets||[]).length)return true;if(!(ex.type==='walking'||ex.cardio))return false;
+  var c=ex.cardio||{};return !!(c.startTime||c.endTime||Number(c.duration||c.finalTime||0)>0||c.saved===true||c.completed===true||c.status==='active'||c.status==='finished');
+}
 function todayTrainingStartMs(){
   var s=getTodSess();if(!s)return 0;
-  var times=[];
-  if(s.started_at)times.push(Date.parse(s.started_at)||0);
-  var es=s.exercises||[];
+  var times=[],has=false,es=s.exercises||[];
   for(var i=0;i<es.length;i++){
     var ex=es[i];
+    if(!exerciseHasTrainingActivity(ex))continue;has=true;
     if(ex.cardio&&ex.cardio.startTime)times.push(Date.parse(ex.cardio.startTime)||0);
     var sets=ex.sets||[];
     for(var k=0;k<sets.length;k++)if(sets[k].performed_at)times.push(Date.parse(sets[k].performed_at)||0);
   }
+  if(!has)return 0;if(s.started_at)times.push(Date.parse(s.started_at)||0);
   times=times.filter(function(v){return v>0;});
   return times.length?Math.min.apply(null,times):0;
 }
@@ -1650,9 +1665,9 @@ function renderHome(){
   var sess=getTodSess();
   var todayParts=[],todaySets=0,todayEx=0,elapsed=0;
   if(sess){
-    var seen={};todayEx=(sess.exercises||[]).length;
-    for(var i=0;i<(sess.exercises||[]).length;i++){todaySets+=(sess.exercises[i].sets||[]).length;if(!seen[sess.exercises[i].part]){seen[sess.exercises[i].part]=1;todayParts.push(sess.exercises[i].part);}}
-    elapsed=Math.floor((Date.now()-new Date(sess.started_at))/60000)||0;
+    var seen={},startMs=todayTrainingStartMs();
+    for(var i=0;i<(sess.exercises||[]).length;i++){var hex=sess.exercises[i];if(!exerciseHasTrainingActivity(hex))continue;todayEx++;todaySets+=(hex.sets||[]).length;if(!seen[hex.part]){seen[hex.part]=1;todayParts.push(hex.part);}}
+    elapsed=startMs?Math.floor((Date.now()-startMs)/60000):0;
     if(todaySets>0){document.getElementById('h-si').textContent='ACTIVE SESSION';}
     else document.getElementById('h-si').textContent='タップして記録を始める';
   }else document.getElementById('h-si').textContent='タップして記録を始める';
@@ -1676,7 +1691,7 @@ function renderHome(){
       if(sd>=cut)pC[p]=(pC[p]||0)+1;
     }
   }
-  if(HD){for(var i=0;i<HD.length;i++){var h=HD[i],hd=new Date(h.d);if(!pL[h.p]||h.d>pL[h.p])pL[h.p]=h.d;if(hd>=cut)pC[h.p]=(pC[h.p]||0)+1;}}
+  if(HD){for(var i=0;i<HD.length;i++){var h=HD[i];if(isHistoryDateDeleted(h.d))continue;var hd=new Date(h.d);if(!pL[h.p]||h.d>pL[h.p])pL[h.p]=h.d;if(hd>=cut)pC[h.p]=(pC[h.p]||0)+1;}}
 
   var grid=document.getElementById('h-pg');grid.innerHTML='';
   for(var i=0;i<PARTS.length;i++){
@@ -2170,9 +2185,9 @@ function saveWalkEdit(){
 function deleteWalkRecord(si,ei,from){
   var ss=gS(),ex=ss[si]&&ss[si].exercises&&ss[si].exercises[ei];if(!ex)return;
   if(!confirm('このウォーキング記録を削除しますか？'))return;
-  ss[si].exercises.splice(ei,1);pS(ss);
+  ss[si].exercises.splice(ei,1);pruneEmptySession(ss,si);pS(ss);
   if(S.exE===ex)clearActiveWalkingSession();
-  closeRec();if(from==='today')showToday();else if(String(from||'').indexOf('daily:')===0)openDailyDetail(String(from).slice(6));else showHistExercise('有酸素','ウォーキング');showToast('ウォーキング記録を削除しました','info');
+  updateGlobalElapsed();closeRec();if(from==='today')showToday();else if(String(from||'').indexOf('daily:')===0)openDailyDetail(String(from).slice(6));else showHistExercise('有酸素','ウォーキング');showToast('ウォーキング記録を削除しました','info');
 }
 
 // =====================================================
@@ -2788,7 +2803,7 @@ function dateDisp(date){var d=new Date(date),w=['日','月','火','水','木','�
 function parseLegacyReps(r){var nums=String(r||'').match(/\d+(?:\.\d+)?/g)||[];return nums.map(function(n){return Number(n)||0;}).filter(function(n){return n>0;});}
 function legacySetCount(h){var c=Number(h&&h.s||0);return c>0?Math.round(c):1;}
 function legacyVolume(h){var w=Number(h&&h.w||0),rs=parseLegacyReps(h&&h.r),sets=legacySetCount(h);if(!w||!rs.length)return 0;if(rs.length>1)return w*rs.reduce(function(a,b){return a+b;},0);return w*rs[0]*sets;}
-function legacyRowsForDate(date){var out=[];if(!HD)return out;for(var i=0;i<HD.length;i++)if(HD[i]&&HD[i].d===date)out.push(HD[i]);return out;}
+function legacyRowsForDate(date){var out=[];if(!HD||isHistoryDateDeleted(date))return out;for(var i=0;i<HD.length;i++)if(HD[i]&&HD[i].d===date)out.push(HD[i]);return out;}
 function uniqArr(a){var m={},r=[];for(var i=0;i<(a||[]).length;i++){var v=a[i];if(v!==''&&v!==undefined&&!m[v]){m[v]=1;r.push(v);}}return r;}
 function summaryLine(k,v){return '<div class="summary-line"><span>'+esc(k)+'</span><b>'+v+'</b></div>';}
 function summaryList(obj,empty){var h='',has=false;for(var k in obj){has=true;h+=summaryLine(k,esc(obj[k])+' set');}return has?h:'<div class="summary-line"><span>'+esc(empty||'記録なし')+'</span><b>-</b></div>';}
@@ -2901,7 +2916,15 @@ function showToday(){
     }
     bd.appendChild(box);
   }
+  var reset=document.createElement('div');reset.className='add-area';reset.innerHTML='<button class="wide-btn red" onclick="resetTodaySession()">今日の記録をすべて削除（未実施に戻す）</button>';bd.appendChild(reset);
   show('stoday');
+}
+function resetTodaySession(){
+  var ss=gS(),td=toDay(),si=-1;for(var i=0;i<ss.length;i++)if(ss[i]&&ss[i].date===td){si=i;break;}if(si<0){showToast('今日の記録はありません','info');return;}
+  if(!confirm('今日のトレーニング記録をすべて削除し、未実施に戻しますか？'))return;
+  if(!confirm('本当に削除しますか？'))return;
+  if(S.tIv||S.tAutoTo)stopTimer();if(S.postActive)stopPostIntervalStopwatch();if(S.wk||S.wkIv)clearActiveWalkingSession();
+  ss.splice(si,1);pS(ss);S.part=null;S.ex=null;S.sess=null;S.exE=null;S.nextDraft=null;updateGlobalElapsed();renderHome();showToday();showToast('今日の記録を削除し、未実施に戻しました','info');
 }
 function findSessionIndex(id,date){var ss=gS();for(var i=0;i<ss.length;i++)if((id&&ss[i].id===id)||ss[i].date===date)return i;return -1;}
 function findExerciseIndex(si,ex){var ss=gS();if(si<0||!ss[si])return -1;var es=ss[si].exercises||[];for(var i=0;i<es.length;i++)if(es[i]===ex||((es[i].name===ex.name)&&(es[i].part===ex.part)))return i;return -1;}
@@ -3023,7 +3046,7 @@ function graphData(){
     }
   }
   if(HD)for(var li=0;li<HD.length;li++){
-    var h=HD[li];if(!h||!graphDate(h.d)||!isStrengthPart(h.p))continue;var hn=String(h.e||'');if(!hn||hn==='NaN')continue;var hk=h.d+'|'+h.p+'|'+hn;if(modernKeys[hk])continue;
+    var h=HD[li];if(!h||isHistoryDateDeleted(h.d)||!graphDate(h.d)||!isStrengthPart(h.p))continue;var hn=String(h.e||'');if(!hn||hn==='NaN')continue;var hk=h.d+'|'+h.p+'|'+hn;if(modernKeys[hk])continue;
     var cnt=legacySetCount(h),vol=legacyVolume(h),rs=parseLegacyReps(h.r),repMax=rs.length?Math.max.apply(null,rs):0,w=Number(h.w||0)||0;
     strength.push({date:h.d,part:h.p,name:hn,sets:cnt,volume:vol,weight:w,reps:repMax,e1rm:graphE1RM(w,repMax),achieved:null,pr:false,source:'legacy'});addVisit(h.d,h.p,hn,cnt,vol);
   }
@@ -3102,7 +3125,7 @@ function renderHistGraph(preserve){
   var bd=document.getElementById('hist-bd'),top=preserve?bd.scrollTop:0,data=graphData();bd.innerHTML=histTabs('graph')+'<div class="graph-page">'+renderGraphControls()+renderPartBalance(data)+renderMonthlyTrend(data)+renderExerciseGrowth(data)+renderHeatmap(data)+renderAchievement(data)+renderWalkingTrend(data)+renderRanking(data)+'<div class="graph-footnote">全期間のセット数・総重量・種目ランキングは古い埋め込み履歴も含みます。達成率・心拍などは値が保存されている記録だけを集計します。</div></div>';show('shist');if(preserve)bd.scrollTop=top;setTimeout(function(){var xs=document.querySelectorAll('[data-graph-end]');for(var i=0;i<xs.length;i++)xs[i].scrollLeft=xs[i].scrollWidth;},0);
 }
 function showHistGraph(){renderHistGraph(false);}
-function trainingDates(){var map={},out=[],ss=gS().filter(function(s){return s&&s.date;});for(var i=0;i<ss.length;i++)map[ss[i].date]=ss[i];if(HD)for(var h=0;h<HD.length;h++)if(HD[h]&&HD[h].d&&!map[HD[h].d])map[HD[h].d]={date:HD[h].d,exercises:[]};for(var d in map)out.push(map[d]);out.sort(function(a,b){return String(b.date).localeCompare(String(a.date));});return out;}
+function trainingDates(){var map={},out=[],ss=gS().filter(function(s){return s&&s.date;});for(var i=0;i<ss.length;i++)map[ss[i].date]=ss[i];if(HD)for(var h=0;h<HD.length;h++)if(HD[h]&&HD[h].d&&!isHistoryDateDeleted(HD[h].d)&&!map[HD[h].d])map[HD[h].d]={date:HD[h].d,exercises:[]};for(var d in map)out.push(map[d]);out.sort(function(a,b){return String(b.date).localeCompare(String(a.date));});return out;}
 function showHistDaily(){
   dbg('renderDailyHistory called');var bd=document.getElementById('hist-bd'),ss=trainingDates();dbg('daily records count='+ss.length);
   bd.innerHTML=histTabs('daily')+'<div id="hist-cal"></div><div class="sec-title">日別一覧</div><div class="hist-list" id="daily-list"></div>';
@@ -3138,7 +3161,7 @@ function mainPartClassForSession(sess){
 function renderHistoryCalendar(){
   var el=document.getElementById('hist-cal');if(!el)return;var ss=gS(),has={};
   for(var i=0;i<ss.length;i++)if(ss[i].date)has[ss[i].date]=mainPartClassForSession(ss[i]);
-  if(HD)for(var h=0;h<HD.length;h++){var hh=HD[h];if(hh&&hh.d&&!has.hasOwnProperty(hh.d))has[hh.d]=partClass(hh.p)||'';}
+  if(HD)for(var h=0;h<HD.length;h++){var hh=HD[h];if(hh&&hh.d&&!isHistoryDateDeleted(hh.d)&&!has.hasOwnProperty(hh.d))has[hh.d]=partClass(hh.p)||'';}
   var parts=(S.histMonth||toDay().slice(0,7)).split('-'),y=parseInt(parts[0],10),m=parseInt(parts[1],10)-1;
   var first=new Date(y,m,1),last=new Date(y,m+1,0),start=first.getDay(),days=last.getDate(),html='<div class="daily-cal"><div class="cal-head"><button class="cal-nav" onclick="moveHistMonth(-1)">前月</button><div class="cal-title">'+y+'年'+(m+1)+'月</div><button class="cal-nav" onclick="moveHistMonth(1)">次月</button></div><div class="cal-grid">';
   ['日','月','火','水','木','金','土'].forEach(function(w){html+='<div class="cal-wd">'+w+'</div>';});
@@ -3151,7 +3174,7 @@ function openDailyDetail(date){
   dbg('openDailyDetail date='+date);S.histDate=date;var ss=gS(),si=-1,s=null;for(var i=0;i<ss.length;i++)if(ss[i].date===date){si=i;s=ss[i];break;}var bd=document.getElementById('hist-bd'),d=summaryDataForDate(date);
   dbg('calcDailyVolume date='+date+' volume='+(d.volume||0));
   var hrs=d.walking.hrs,avg=hrs.length?Math.round(hrs.reduce(function(a,b){return a+b;},0)/hrs.length):null,max=hrs.length?Math.max.apply(null,hrs):null;
-  bd.innerHTML=histTabs('daily')+'<div class="daily-detail-head"><button class="mini-btn" onclick="showHistDaily()">← 日別一覧</button><div class="daily-detail-title">'+esc(dateDisp(date))+'</div><div class="volume-big"><div class="k">TOTAL VOLUME</div><div class="v">'+fmtKg(d.volume||0)+'</div></div></div>'
+  bd.innerHTML=histTabs('daily')+'<div class="daily-detail-head"><button class="mini-btn" onclick="showHistDaily()">← 日別一覧</button><div class="daily-detail-title">'+esc(dateDisp(date))+'</div><div class="volume-big"><div class="k">TOTAL VOLUME</div><div class="v">'+fmtKg(d.volume||0)+'</div></div><button class="wide-btn red" style="margin-top:14px" onclick="deleteDayRecord(\''+esc(date)+'\')">この日の記録をすべて削除</button></div>'
     +'<div class="summary-grid2"><div class="summary-box"><div class="k">筋トレ</div><div class="v">'+d.sets+'<small>set</small></div></div><div class="summary-box"><div class="k">種目数</div><div class="v">'+d.exerciseCount+'</div></div><div class="summary-box"><div class="k">達成</div><div class="v">'+d.achieved+'</div></div><div class="summary-box"><div class="k">未達</div><div class="v">'+d.failed+'</div></div><div class="summary-box"><div class="k">歩行時間</div><div class="v">'+d.walking.min+'<small>分</small></div></div><div class="summary-box"><div class="k">距離</div><div class="v">'+fmt2(d.walking.km)+'<small>km</small></div></div></div>'
     +'<div class="summary-section"><div class="summary-title">部位別まとめ</div>'+dailyPartSummary(d)+'</div><div class="summary-section"><div class="summary-title">種目別詳細</div><div id="daily-ex-detail"></div></div>'
     +'<div class="summary-section"><div class="summary-title">ウォーキング</div>'+summaryLine('回数',d.walking.count+'回')+summaryLine('合計時間',d.walking.min+'分')+summaryLine('距離',fmt2(d.walking.km)+'km')+summaryLine('消費',d.walking.cal+'kcal')+summaryLine('心拍',hrs.length?'平均 '+avg+' / 最大 '+max:'未記録')+'</div>';
@@ -3172,6 +3195,20 @@ function openDailyDetail(date){
     wrap.appendChild(box);
   }
   show('shist');
+}
+function deleteDayRecord(date){
+  date=String(date||'');if(!date)return;
+  var ss=gS(),hasLive=false;for(var i=0;i<ss.length;i++)if(ss[i]&&ss[i].date===date){hasLive=true;break;}
+  var hasLegacy=legacyRowsForDate(date).length>0,hasMemo=!!dailyMemo(date);
+  if(!hasLive&&!hasLegacy&&!hasMemo){showToast('この日の記録はありません','info');showHistDaily();return;}
+  if(!confirm(dateDisp(date)+' の筋トレ・ウォーキング・メモをすべて削除しますか？'))return;
+  if(!confirm('本当に削除しますか？この操作は元に戻せません。'))return;
+  ss=ss.filter(function(s){return !s||s.date!==date;});pS(ss);markHistoryDateDeleted(date);
+  if(date===toDay()){
+    if(S.tIv||S.tAutoTo)stopTimer();if(S.postActive)stopPostIntervalStopwatch();if(S.wk||S.wkIv)clearActiveWalkingSession();
+    S.part=null;S.ex=null;S.sess=null;S.exE=null;S.nextDraft=null;updateGlobalElapsed();
+  }
+  markPrFlags();S.histDate=null;showHistDaily();showToast(dateDisp(date)+' の記録をすべて削除しました','info');
 }
 function dailyPartSummary(d){var h='',has=false;for(var p in d.partSets){has=true;h+=summaryLine(p,d.partSets[p]+'set / '+fmtKg(partVolumeFor(d.date,p)));}return has?h:summaryLine('筋トレ記録なし','-');}
 function partVolumeFor(date,part){var ss=gS(),v=0;for(var i=0;i<ss.length;i++)if(ss[i].date===date)for(var e=0;e<(ss[i].exercises||[]).length;e++){var ex=ss[i].exercises[e];if(ex.part!==part)continue;for(var k=0;k<(ex.sets||[]).length;k++)v+=calcSetVolume(ex.sets[k]);}return v;}
@@ -3268,7 +3305,7 @@ function deleteExerciseRecord(si,ei,from){
   var nm=ex.parent_name||ex.name;
   if(!confirm('今日の'+nm+'の記録をすべて削除します。よろしいですか？'))return;
   if(!confirm('本当に削除する'))return;
-  ss[si].exercises.splice(ei,1);pS(ss);markPrFlags();closeRec();
+  ss[si].exercises.splice(ei,1);pruneEmptySession(ss,si);pS(ss);markPrFlags();updateGlobalElapsed();closeRec();
   if(S.exE===ex){S.exE=null;}
   if(from==='today')showToday();else showHist();
   showToast('種目記録を削除しました','info');
@@ -3401,7 +3438,8 @@ function showSet2(){
   if(bi)bi.innerHTML='端末名: <b style="color:#f4f7fa;">'+esc(deviceName())+'</b><br>💾 '+backupLabel()+'<br>📥 最終インポート: '+esc(lastImportLabel())+'<br>'
     +'現在の記録: '+bc.total+'件 / 今日: '+bc.today+'件<br>筋トレ: '+bc.strength+'件 / ウォーキング: '+bc.walking+'件<br>'
     +(bd>=7?'<span style="color:#f59e0b;font-weight:900;">7日以上バックアップしていません</span>':'<span style="color:#25c46b;font-weight:900;">バックアップ状態 OK</span>');
-  document.getElementById('st-stats').innerHTML='📊 アプリ内記録: '+ss.length+'セッション / '+ts+'セット<br>📅 既存データ: '+(HD?HD.length:0)+'件 (2023〜2026)';
+  var visibleHD=0;if(HD)for(var hi=0;hi<HD.length;hi++)if(HD[hi]&&!isHistoryDateDeleted(HD[hi].d))visibleHD++;
+  document.getElementById('st-stats').innerHTML='📊 アプリ内記録: '+ss.length+'セッション / '+ts+'セット<br>📅 既存データ: '+visibleHD+'件 (2023〜2026)';
   show('sts');
 }
 function togHidden(){S.showHidden=!S.showHidden;showSet2();}
