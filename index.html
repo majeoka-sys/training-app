@@ -676,6 +676,12 @@ button.sv{appearance:none;-webkit-appearance:none;}
   .form-grid,.end-grid{grid-template-columns:1fr;}
   .sb.lg,.sb.sm{width:auto}.sv{font-size:44px}.stepper.main .sv{min-width:88px;}
 }
+.coach-card{margin:0 14px 8px;padding:12px 14px;border-radius:14px;background:linear-gradient(160deg,rgba(37,196,107,.12),#151A22);border:1px solid rgba(37,196,107,.35);}
+.coach-head{font-size:13px;font-weight:900;color:#25C46B;letter-spacing:1px;margin-bottom:6px;}
+.coach-msg{font-size:15px;font-weight:700;line-height:1.6;color:var(--text);}
+.coach-apply{margin-top:10px;width:100%;padding:12px;border-radius:10px;background:rgba(37,196,107,.18);border:1px solid rgba(37,196,107,.4);color:#7ee2ae;font-size:15px;font-weight:900;cursor:pointer;}
+.coach-line{padding:8px 0;border-bottom:1px solid var(--line);font-size:14px;line-height:1.7;color:var(--text);}
+.coach-line:last-child{border-bottom:none;}
 .go-overlay{position:fixed;inset:0;z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;
   background:radial-gradient(circle at 50% 42%,#1c3a2c 0%,#0B0F14 72%);}
 .go-overlay.on{display:flex;animation:goFade .22s ease;}
@@ -820,7 +826,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="date-bar"><div class="dt" id="h-dt"></div><div class="si" id="h-si"></div></div>
     <div class="summary-card" id="h-sum"></div>
   </div>
-  <div class="app-version">UI v3.15 graph-suite</div>
+  <div class="app-version">UI v3.16 interval-coach</div>
   <div class="home-elapsed-wrap"><span class="elapsed-chip" data-elapsed-chip="home"></span></div>
   <div class="backup-warn" id="home-backup-warn">バックアップから7日以上経っています</div>
   <div class="scroll"><div class="home-sec">Body Parts</div><div class="parts-stack" id="h-pg"></div></div>
@@ -1035,6 +1041,11 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="t-done-sub" id="t-done-sub">次は2セット目</div>
   </div>
   <div class="t-last" id="t-ls"></div>
+  <div class="coach-card" id="coach-card" style="display:none">
+    <div class="coach-head">🤖 AIコーチ</div>
+    <div class="coach-msg" id="coach-msg"></div>
+    <button class="coach-apply" id="coach-apply" onclick="applyCoachSuggestion()">提案を適用</button>
+  </div>
   <div class="draft-card" id="next-draft-card">
     <div class="draft-head"><div class="draft-title">次セット予定</div><div class="draft-sub">休憩中に変更できます</div></div>
     <div class="draft-grid">
@@ -1050,8 +1061,6 @@ button.sv{appearance:none;-webkit-appearance:none;}
   <div class="t-more">
     <button class="qbtn" onclick="editLastSet()">直前セットを修正</button>
     <button class="qbtn" onclick="deleteLastSet()">直前セットを削除</button>
-    <button class="qbtn" onclick="addSamePart()">＋同じ部位の種目</button>
-    <button class="qbtn" onclick="addOtherPart()">＋別部位</button>
   </div>
   <div class="t-acts">
     <button class="t-nxt" onclick="nextSet()">次のセットへ →</button>
@@ -1138,7 +1147,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="hdr-title">設定</div><div class="hdr-r"></div>
   </div>
   <div class="scroll"><div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
-    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.15 graph-suite</div></div></div>
+    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.16 interval-coach</div></div></div>
     <div class="panel">
       <div class="panel-h">端末・同期</div>
       <div class="panel-b form-grid">
@@ -1358,7 +1367,7 @@ function safeSeconds(sec){sec=parseInt(sec,10);return(!sec||isNaN(sec)||sec<=0)?
 function getIntD(name){return getSafeIntervalSeconds(S.part,name);}
 function getIntFor(part,name){var pr=getPref(part,name),v=parseInt(pr.interval,10);if(v>0)return v;var p=gIP();v=parseInt(p[name],10);if(v>0)return v;var names=aliasesFor(part,name);for(var i=0;i<names.length;i++){var m=getME(part,names[i]);if(m&&m.typical_interval_min){v=Math.round(parseFloat(m.typical_interval_min)*60);if(v>0)return v;}}return 90;}
 function getSafeIntervalSeconds(part,name){return safeSeconds(getIntFor(part,name));}
-function secLbl(sec){sec=safeSeconds(sec);return sec>=60?(Math.round(sec/30)/2)+'分':sec+'秒';}
+function secLbl(sec){sec=safeSeconds(sec);if(sec<60)return sec+'秒';var m=Math.floor(sec/60),s=sec%60;return s?m+'分'+s+'秒':m+'分';}
 function getWeightStep(part,name){
   var p=getPref(part,name);if(p.weight_step)return parseFloat(p.weight_step)||1;
   var n=String(name||'');
@@ -2514,6 +2523,7 @@ function renderStrengthIntervalScreen(savedSet){
   if(ds)ds.textContent=setDesc(S.part,set)+' / 次は'+(set.order+1)+'セット目';
   document.getElementById('t-pv').textContent='推奨: '+S.tTgt+'秒';
   renderNextDraft();
+  renderCoach(set);
   updAutoLbl(false);
   document.getElementById('t-pb').textContent='⏸ 一時停止';
   var ring=document.getElementById('t-ring');if(ring){ring.setAttribute('stroke-dashoffset','0');ring.setAttribute('stroke','url(#tg)');}
@@ -2586,6 +2596,124 @@ function confirmFail(){
 }
 
 // =====================================================
+// AI COACH
+// =====================================================
+function coachAdvice(set){
+  if(!set||!isStrengthPart(S.part)||isCardioPart(S.part,S.ex))return null;
+  var sets=(S.exE&&S.exE.sets)||[],step=getWeightStep(S.part,S.ex)||1;
+  var w=Number(set.weight_kg)||0,msg=[],draft=null;
+  var planned=parseInt(set.planned_reps||set.reps,10)||0;
+  var actual=parseInt(set.actualReps||set.actual_reps||set.reps,10)||0;
+  if(set.achieved===false){
+    var rate=planned>0?actual/planned:1;
+    if(rate>=0.8){msg.push('あと少しでした。同重量のまま回数を狙うのがおすすめ。');draft={weight:w,reps:Math.max(1,planned)};}
+    else{msg.push('疲労がたまっているかも。少し下げてフォーム重視で。');draft={weight:Math.max(0,snapWeight(w-step)),reps:Math.max(1,planned||actual||10)};}
+  }else{
+    var streak=0;
+    for(var i=sets.length-1;i>=0;i--){var st=sets[i];if(st.achieved&&Number(st.weight_kg)===w)streak++;else break;}
+    if(streak>=3){msg.push(streak+'セット連続達成。次は+'+fmt(step)+'kgに挑戦しても良さそう。');draft={weight:snapWeight(w+step),reps:Math.max(1,planned||10)};}
+    else{
+      var prevEx=getPrevExerciseRecord(S.part,S.ex);
+      if(prevEx&&prevEx.sets&&prevEx.sets.length){
+        var ps=prevEx.sets[Math.max(0,Math.min((set.order||1)-1,prevEx.sets.length-1))],pw=Number(ps.weight_kg)||0;
+        if(w>pw)msg.push('前回の同セットより+'+fmt(w-pw)+'kg。良いペース！');
+        else if(w===pw&&w>0)msg.push('前回と同じ重量をキープ。この調子。');
+      }
+      if(!msg.length)msg.push('順調です。呼吸を整えて次のセットへ。');
+    }
+  }
+  var pr=bestForNames(S.part,aliasesFor(S.part,S.ex));
+  if(pr>0&&w<pr&&w>=pr*0.95)msg.push('PR('+fmt(pr)+'kg)まであと'+fmt(pr-w)+'kg！');
+  return{msg:msg.join(' '),draft:draft};
+}
+function renderCoach(set){
+  var card=document.getElementById('coach-card');if(!card)return;
+  var a=null;try{a=coachAdvice(set);}catch(e){dbg('coach error '+e.message);}
+  if(!a||!a.msg){card.style.display='none';S.coachDraft=null;return;}
+  card.style.display='block';
+  document.getElementById('coach-msg').textContent=a.msg;
+  S.coachDraft=a.draft||null;
+  var btn=document.getElementById('coach-apply');
+  if(btn){btn.style.display=a.draft?'':'none';if(a.draft)btn.textContent='提案を次セットに適用: '+fmt(a.draft.weight)+'kg × '+a.draft.reps+'回';}
+}
+function applyCoachSuggestion(){
+  if(!S.coachDraft)return;
+  S.nextDraft={weight:S.coachDraft.weight,reps:S.coachDraft.reps,variation:(S.nextDraft&&S.nextDraft.variation)||S.vari||'標準'};
+  renderNextDraft();showToast('次セット予定に反映しました','success');
+}
+function lastMaxWeights(part,name,n){
+  var ss=gS(),td=toDay(),names=aliasesFor(part,name),out=[];
+  for(var i=ss.length-1;i>=0&&out.length<n;i--){
+    var s=ss[i];if(!s||s.date===td)continue;var mx=0;
+    for(var j=0;j<(s.exercises||[]).length;j++){
+      var ex=s.exercises[j],pn=ex.parent_name||ex.name;
+      if(ex.part!==part||(names.indexOf(ex.name)<0&&names.indexOf(pn)<0))continue;
+      for(var k=0;k<(ex.sets||[]).length;k++){var w2=Number(ex.sets[k].weight_kg)||0;if(w2>mx)mx=w2;}
+    }
+    if(mx>0)out.push(mx);
+  }
+  return out;
+}
+function partVolumeForDate(date,part){
+  var ss=gS(),v=0;
+  for(var i=0;i<ss.length;i++){
+    if(ss[i].date!==date)continue;
+    for(var j=0;j<(ss[i].exercises||[]).length;j++){
+      var ex=ss[i].exercises[j];if(ex.part!==part)continue;
+      for(var k=0;k<(ex.sets||[]).length;k++)v+=calcSetVolume(ex.sets[k]);
+    }
+  }
+  return v;
+}
+function prevPartDate(part,date){
+  var ss=gS(),best='';
+  for(var i=0;i<ss.length;i++){
+    var s=ss[i];if(!s||!s.date||s.date>=date)continue;
+    for(var j=0;j<(s.exercises||[]).length;j++)if(s.exercises[j].part===part&&(s.exercises[j].sets||[]).length){if(s.date>best)best=s.date;break;}
+  }
+  return best;
+}
+function coachVolumeCompare(d){
+  var main='',mx=0;for(var p in d.partSets)if(d.partSets[p]>mx){mx=d.partSets[p];main=p;}
+  if(!main)return '';
+  var pd=prevPartDate(main,d.date);if(!pd)return '';
+  var pv=partVolumeForDate(pd,main),tv=partVolumeForDate(d.date,main);
+  if(!pv||!tv)return '';
+  var diff=Math.round((tv-pv)/pv*100);
+  return main+'の総重量は前回('+pd.slice(5)+')比 '+(diff>=0?'+':'')+diff+'%（'+fmtKg(tv)+'）';
+}
+function coachNeglectedParts(){
+  var pL={},ss=gS();
+  for(var i=0;i<ss.length;i++)for(var j=0;j<(ss[i].exercises||[]).length;j++){
+    var ex=ss[i].exercises[j];if(!(ex.sets||[]).length&&!ex.cardio)continue;
+    if(!pL[ex.part]||ss[i].date>pL[ex.part])pL[ex.part]=ss[i].date;
+  }
+  if(HD)for(var h=0;h<HD.length;h++){var r=HD[h];if(r&&!isHistoryDateDeleted(r.d)&&(!pL[r.p]||r.d>pL[r.p]))pL[r.p]=r.d;}
+  var out=[];
+  for(var k=0;k<STRENGTH_PARTS.length;k++){var part=STRENGTH_PARTS[k];if(pL[part]){var df=diffD(pL[part]);if(df>=10)out.push(part+'('+df+'日)');}}
+  return out;
+}
+function coachDailyInsights(d){
+  var out=[];
+  try{
+    if(d.sets){
+      var rate=Math.round(d.achieved/d.sets*100);
+      out.push('達成率 '+rate+'%（'+d.achieved+'/'+d.sets+'セット）'+(rate>=90?'。素晴らしい安定感！':(rate>=70?'。良いペースです。':'。次回は重量設定を少し見直しても良いかも。')));
+      var vc=coachVolumeCompare(d);if(vc)out.push(vc);
+    }
+    if(d.prs.length)out.push('🏆 PR更新 '+d.prs.length+'件: '+d.prs.map(function(p){return p.name+' '+fmt(p.weight)+'kg';}).join(' / '));
+    for(var nm in d.exercises){
+      var e=d.exercises[nm];if(!e.maxW)continue;
+      var hist=lastMaxWeights(e.part,nm,3);
+      if(hist.length>=3&&hist[0]===e.maxW&&hist[1]===e.maxW&&hist[2]===e.maxW)out.push(nm+'は4回連続で最大'+fmt(e.maxW)+'kg。次回は+'+fmt(getWeightStep(e.part,nm)||1)+'kgか回数+1に挑戦を。');
+    }
+    var neg=coachNeglectedParts();
+    if(neg.length)out.push('10日以上空いている部位: '+neg.join(' / '));
+  }catch(e){dbg('coach insights error '+e.message);}
+  return out;
+}
+
+// =====================================================
 // PR
 // =====================================================
 function chkPR(part,name,w,best){
@@ -2616,8 +2744,9 @@ function startInt(){
   var dm=document.getElementById('t-done-main'),ds=document.getElementById('t-done-sub');
   if(dm)dm.textContent=last.order+'セット終了';
   if(ds)ds.textContent=setDesc(S.part,last)+' / 次は'+(last.order+1)+'セット目';
-  if(sets.length>=2){var pv=sets[sets.length-2];document.getElementById('t-pv').textContent='前回: '+(pv.rest_seconds||'-')+'秒';}
+  if(sets.length>=2){var pv=sets[sets.length-2];document.getElementById('t-pv').textContent='前回休憩: '+(pv.rest_seconds?pv.rest_seconds+'秒':'-');}
   else document.getElementById('t-pv').textContent='推奨: '+S.tTgt+'秒';
+  renderCoach(last);
   updAutoLbl(false);
   document.getElementById('t-pb').textContent='⏸ 一時停止';
   var ring=document.getElementById('t-ring');if(ring){ring.setAttribute('stroke-dashoffset','0');ring.setAttribute('stroke','url(#tg)');}
@@ -2670,7 +2799,7 @@ function finishInterval(){
   dbg('interval countdown reached zero');
   updAutoLbl(true);
   if(S.tIv){clearInterval(S.tIv);S.tIv=null;}
-  if(isAutoNext()&&!S.tAutoTo)S.tAutoTo=setTimeout(function(){S.tAutoTo=null;dbg('calling goNextStrengthSetAfterInterval');goNextStrengthSetAfterInterval(true);},500);
+  if(isAutoNext()&&!S.tAutoTo)S.tAutoTo=setTimeout(function(){S.tAutoTo=null;if(anyModalOpen()){dbg('auto next skipped: modal open');return;}dbg('calling goNextStrengthSetAfterInterval');goNextStrengthSetAfterInterval(true);},500);
 }
 function adjT(d){
   if(S.tAutoTo){clearTimeout(S.tAutoTo);S.tAutoTo=null;}
@@ -2734,6 +2863,32 @@ function goNextStrengthSetAfterInterval(auto){
 function nextSet(auto){
   if(!auto)beep(550,0.2);
   goNextStrengthSetAfterInterval(auto);
+}
+function anyModalOpen(){
+  var ids=['fail-md','rec-md','edit-md','add-md','nm'];
+  for(var i=0;i<ids.length;i++){var el=document.getElementById(ids[i]);if(el&&el.classList&&el.classList.contains('on'))return true;}
+  return false;
+}
+function returnToInterval(si,ei){
+  var ss=gS(),ex=ss[si]&&ss[si].exercises&&ss[si].exercises[ei],sets=(ex&&ex.sets)||[];
+  if(!ex||!sets.length){
+    stopTimer();S.nextDraft=null;
+    if(ex){S.exE=ex;renderSet();show('sset');bindStrengthActionButtons();bindSetNumberInputs();}
+    else goEx();
+    showToast('セットが無くなったため記録画面に戻りました','info');
+    return;
+  }
+  S.exE=ex;
+  var last=sets[sets.length-1];
+  S.intervalCtx={part:S.part,exercise:S.ex,setNumber:last.order,weight:last.weight_kg,reps:last.reps,variation:last.variation||last.memo||'標準'};
+  prepareNextDraft(last);
+  renderStrengthIntervalScreen(last);
+  show('si');
+  if(S.tPau)document.getElementById('t-pb').textContent='▶ 再開';
+  if(!S.tIv&&!S.tPau&&!S.tBp)S.tIv=setInterval(tickT,500);
+  tickT();
+  if(S.tBp)updAutoLbl(true);
+  dbg('returned to interval after record mutation');
 }
 function endEx(){
   saveRest();stopTimer();S.nextDraft=null;if(S.postActive)stopPostIntervalStopwatch();
@@ -2815,6 +2970,7 @@ function todaySummaryText(d){
   var exNames=Object.keys(d.exercises);if(exNames.length){lines.push('種目別');for(var i=0;i<exNames.length;i++){var e=d.exercises[exNames[i]];lines.push(e.name+': '+e.sets+'セット / 最大 '+(e.maxW?fmt(e.maxW)+'kg':'自重')+' x '+(e.maxR||'-')+(e.fail?' / 未達 '+e.fail:''));}}
   if(d.walking.count){var hrs=d.walking.hrs,avg=hrs.length?Math.round(hrs.reduce(function(a,b){return a+b;},0)/hrs.length):null,max=hrs.length?Math.max.apply(null,hrs):null;lines.push('');lines.push('ウォーキング: '+d.walking.count+'回 / '+d.walking.min+'分 / '+fmt2(d.walking.km)+'km / '+d.walking.cal+'kcal');lines.push('心拍: 平均 '+(avg||'-')+' / 最大 '+(max||'-'));lines.push('傾斜: '+(d.walking.inclines.join('→')||'-')+' / 速度: '+(d.walking.speeds.join('→')||'-'));}
   lines.push('');lines.push('PR: '+(d.prs.length?d.prs.map(function(p){return p.name+' '+fmt(p.weight)+'kg';}).join(' / '):'PR更新なし'));
+  var ins=coachDailyInsights(d);if(ins.length){lines.push('');lines.push('AIコーチ分析');for(var ci=0;ci<ins.length;ci++)lines.push('- '+ins[ci]);}
   lines.push('');lines.push('メモ:');lines.push(dailyMemo()||'');return lines.join('\n');
 }
 function copyDailySummary(){
@@ -2829,6 +2985,7 @@ function showDailySummary(){
   var partTxt=d.parts.length?d.parts.map(function(p){return'<span class="summary-chip">'+esc(p)+'</span>';}).join(''):'<span class="summary-chip">記録なし</span>';
   var exHtml='',names=Object.keys(d.exercises);for(var i=0;i<names.length;i++){var e=d.exercises[names[i]];exHtml+=summaryLine(e.name,e.sets+' set / 最大 '+(e.maxW?fmt(e.maxW)+'kg':'自重')+' x '+(e.maxR||'-')+(e.fail?' / 未達 '+e.fail:'')+(e.pr?' / PR':''));}
   var prHtml=d.prs.length?d.prs.map(function(p){return summaryLine(p.name,fmt(p.weight)+'kg'+(p.reps?' x '+p.reps:''));}).join(''):summaryLine('PR更新なし','-');
+  var ins=coachDailyInsights(d),insHtml=ins.length?ins.map(function(t){return '<div class="coach-line">'+esc(t)+'</div>';}).join(''):'<div class="summary-line"><span>分析できる記録がありません</span><b>-</b></div>';
   bd.innerHTML='<div style="padding:16px 16px 0"><div class="summary-card"><div class="summary-head"><div class="summary-ready">DAILY FINISH</div><div class="summary-sub">'+esc(toDayDisp())+' 今日のまとめ</div></div></div></div>'
     +'<div class="summary-grid2">'
     +'<div class="summary-box"><div class="k">筋トレ合計</div><div class="v">'+d.sets+'<small> set</small></div></div>'
@@ -2846,6 +3003,7 @@ function showDailySummary(){
     +'<div class="summary-section"><div class="summary-title">ウォーキングまとめ</div>'
     +summaryLine('回数',d.walking.count+'回')+summaryLine('合計時間',d.walking.min+'分')+summaryLine('距離',fmt2(d.walking.km)+' km')+summaryLine('消費',d.walking.cal+' kcal')+summaryLine('心拍',hrs.length?'平均 '+avgHr+' / 最大 '+maxHr:'未記録')+summaryLine('傾斜',esc(d.walking.inclines.join('→')||'-'))+summaryLine('速度',esc(d.walking.speeds.join('→')||'-'))+'</div>'
     +'<div class="summary-section"><div class="summary-title">PR更新</div>'+prHtml+'</div>'
+    +'<div class="summary-section"><div class="summary-title">🤖 AIコーチ分析</div>'+insHtml+'</div>'
     +'<div class="summary-memo"><div class="summary-title">メモ</div><textarea id="summary-memo" placeholder="今日の体調、良かった点、次回メモ">'+esc(dailyMemo())+'</textarea><button class="wide-btn" style="margin-top:10px" onclick="saveDailySummaryMemo()">メモを保存</button></div>'
     +'<div class="end-grid" style="padding:0 16px 24px"><button class="wide-btn dk" onclick="showToday()">今日の記録へ戻る</button><button class="wide-btn dk" onclick="goHome()">ホームへ戻る</button><button class="wide-btn" onclick="copyDailySummary()">今日のまとめをコピー</button><button class="wide-btn" onclick="expData()">バックアップを書き出す</button></div>';
   show('ssummary');
@@ -3263,7 +3421,7 @@ function openSetEdit(si,ei,ki,from){
   document.getElementById('rec-title').textContent='セット記録を編集';
   document.getElementById('rec-body').innerHTML='<div class="edit-grid">'
     +'<div class="field"><label>重量 kg</label><input id="set-w" type="number" inputmode="decimal" step="0.5" value="'+esc(st.weight_kg||0)+'"></div>'
-    +'<div class="field"><label>実レップ</label><input id="set-r" type="number" inputmode="numeric" step="1" value="'+esc(st.reps||0)+'"></div>'
+    +'<div class="field"><label>実レップ</label><input id="set-r" type="number" inputmode="numeric" step="1" value="'+esc(st.actualReps||st.actual_reps||st.reps||0)+'"></div>'
     +'<div class="field"><label>予定レップ</label><input id="set-pr" type="number" inputmode="numeric" step="1" value="'+esc(st.planned_reps||st.reps||0)+'"></div>'
     +'<div class="field"><label>達成</label><button class="wide-btn dk" id="set-ach" onclick="toggleSetAch()">'+(st.achieved?'達成':'未達')+'</button></div>'
     +'<div class="field full"><label>バリエーション</label><input id="set-var" type="text" value="'+esc(st.variation||st.memo||'標準')+'"></div>'
@@ -3280,6 +3438,8 @@ function saveSetEdit(){
   st.reps=parseInt(document.getElementById('set-r').value,10)||0;
   st.planned_reps=parseInt(document.getElementById('set-pr').value,10)||st.reps;
   st.achieved=document.getElementById('set-ach').textContent==='達成';
+  if(st.achieved){st.actualReps=null;st.actual_reps=null;}
+  else{st.actualReps=st.reps;st.actual_reps=st.reps;}
   st.variation=document.getElementById('set-var').value||'標準';
   st.memo=document.getElementById('set-memo').value||'';
   renumberSets(ex);pS(ss);markPrFlags();syncCurrentAfterMutation(r.si,r.ei);closeRec();refreshAfterRecordMutation(r.from,r.si,r.ei);
@@ -3290,6 +3450,7 @@ function refreshAfterRecordMutation(from,si,ei){
   if(from==='today')showToday();
   else if(String(from||'').indexOf('daily:')===0)openDailyDetail(String(from).slice(6));
   else if(from==='set'){renderSet();show('sset');}
+  else if(from==='interval'){returnToInterval(si,ei);}
   else if(gS()[si]&&gS()[si].exercises&&gS()[si].exercises[ei])showHistSets(si,ei);
   else showHist();
   showToast('記録を更新しました','info');
@@ -3314,13 +3475,13 @@ function editLastSet(){
   var ref=currentExerciseRef();if(!ref)return;
   var ss=gS(),ex=ss[ref.si]&&ss[ref.si].exercises&&ss[ref.si].exercises[ref.ei],sets=ex&&ex.sets||[];
   if(!sets.length){alert('修正できるセットがありません');return;}
-  openSetEdit(ref.si,ref.ei,sets.length-1,'set');
+  openSetEdit(ref.si,ref.ei,sets.length-1,activeScreenId()==='si'?'interval':'set');
 }
 function deleteLastSet(){
   var ref=currentExerciseRef();if(!ref)return;
   var ss=gS(),ex=ss[ref.si]&&ss[ref.si].exercises&&ss[ref.si].exercises[ref.ei],sets=ex&&ex.sets||[];
   if(!sets.length){alert('削除できるセットがありません');return;}
-  deleteSetRecord(ref.si,ref.ei,sets.length-1,'set');
+  deleteSetRecord(ref.si,ref.ei,sets.length-1,activeScreenId()==='si'?'interval':'set');
 }
 
 // =====================================================
@@ -3506,7 +3667,7 @@ function executeImport(mode){
   else{pS(mergeSessions(gS(),d.sessions||[]));applyImportMeta(d);}
   markPrFlags();cancelImport();showToast('インポート完了','success');refreshAfterImport(prev);
 }
-function clrToday(){if(confirm('今日のデータを削除しますか？')){pS(gS().filter(function(s){return s.date!==toDay();}));alert('削除しました');}}
+function clrToday(){if(confirm('今日のデータを削除しますか？')){pS(gS().filter(function(s){return s.date!==toDay();}));if(S.tIv||S.tAutoTo)stopTimer();if(S.postActive)stopPostIntervalStopwatch();S.exE=null;S.nextDraft=null;updateGlobalElapsed();renderHome();showToast('今日のデータを削除しました','info');showSet2();}}
 
 // =====================================================
 // MODAL BACKDROP
