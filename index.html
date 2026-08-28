@@ -298,7 +298,8 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
 .set-nav{display:flex;align-items:center;padding:10px 8px;}
 .set-name-lbl{flex:1;text-align:center;font-size:21px;font-weight:900;overflow:hidden;
   white-space:nowrap;text-overflow:ellipsis;padding:0 4px;}
-#sset .set-name-lbl,#si .hdr-title{text-align:right;padding-right:10px;}
+#sset .set-name-lbl{text-align:right;padding-right:10px;}
+#si .hdr-title{text-align:left;padding-right:10px;}
 #si .hdr-title{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
 .set-ctr{padding:10px 16px 12px;border-top:1px solid #252525;}
 .set-head{display:flex;justify-content:center;align-items:center;}
@@ -826,7 +827,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="date-bar"><div class="dt" id="h-dt"></div><div class="si" id="h-si"></div></div>
     <div class="summary-card" id="h-sum"></div>
   </div>
-  <div class="app-version">UI v3.16 interval-coach</div>
+  <div class="app-version">UI v3.18 prev-record-safe</div>
   <div class="home-elapsed-wrap"><span class="elapsed-chip" data-elapsed-chip="home"></span></div>
   <div class="backup-warn" id="home-backup-warn">バックアップから7日以上経っています</div>
   <div class="scroll"><div class="home-sec">Body Parts</div><div class="parts-stack" id="h-pg"></div></div>
@@ -846,6 +847,21 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="hdr-r"></div>
   </div>
   <div class="scroll" id="ex-list"></div>
+</div>
+<!-- PREV RECORD -->
+<div id="sprev" class="screen">
+  <div class="hdr">
+    <button class="hdr-back" onclick="goEx()">← 戻る</button>
+    <div class="hdr-title" id="pv-tt"></div>
+    <div class="hdr-r"></div>
+  </div>
+  <div class="scroll">
+    <div id="pv-body"></div>
+    <div class="end-grid" id="pv-acts">
+      <button class="wide-btn dk" id="pv-back" onclick="goEx()">戻る</button>
+      <button class="wide-btn" onclick="startFromPreview()">開始</button>
+    </div>
+  </div>
 </div>
 <!-- SET -->
 <div id="swalk" class="screen">
@@ -1147,7 +1163,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="hdr-title">設定</div><div class="hdr-r"></div>
   </div>
   <div class="scroll"><div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
-    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.16 interval-coach</div></div></div>
+    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.18 prev-record-safe</div></div></div>
     <div class="panel">
       <div class="panel-h">端末・同期</div>
       <div class="panel-b form-grid">
@@ -1518,7 +1534,8 @@ var S={part:null,ex:null,sess:null,exE:null,
   strengthDelegateInstalled:false,lastDirectActionAt:0,lastDirectRole:'',strengthActionBusy:false,
   wk:null,wkIv:null,wkStartMs:0,wkElapsedAdd:0,wkPaused:false,wkPauseAt:0,wkSi:-1,wkEi:-1,
   recType:null,recRef:null,histPart:null,histEx:null,histDate:null,histMonth:null,globalElapsedIv:null,nextDraft:null,
-  numT:null,numStr:'0'};
+  numT:null,numStr:'0',
+  pvPart:null,pvName:null,restOvr:null};
 
 // =====================================================
 // SCREEN
@@ -1770,7 +1787,7 @@ function addExCard(list,ex,part,isDone){
     +'<div class="ex-chip"><div class="ex-k">90日</div><div class="ex-v">'+cnt+'回</div></div>'
     +'<div class="ex-chip"><div class="ex-k">休憩目安</div><div class="ex-v">'+secLbl(intSec)+'</div></div>'
     +'</div></div><div class="ex-arr">›</div><button class="ex-edit" onclick="event.stopPropagation();openEdit(\''+esc(part)+'\',\''+esc(ex.name)+'\')">編集</button>';
-  card.onclick=(function(p,n){return function(){selEx(p,n);};})(part,ex.name);
+  card.onclick=(function(p,n){return function(){previewEx(p,n);};})(part,ex.name);
   var tm=null;card.addEventListener('touchstart',function(){tm=setTimeout(function(){openEdit(part,ex.name);},650);});
   card.addEventListener('touchend',function(){if(tm)clearTimeout(tm);});
   card.addEventListener('touchmove',function(){if(tm)clearTimeout(tm);});
@@ -1855,6 +1872,109 @@ function saveCustomExercise(){
 }
 function showAE(){openAddExercise();}
 function goEx(){renderExList(S.part);show('sex');}
+/* ===== 前回の記録 確認画面（読み取り専用・tsは書き換えない） ===== */
+function getPrevExerciseEntry(part,name){
+  var ss=gS(),names=aliasesFor(part,name),td=toDay();
+  for(var i=ss.length-1;i>=0;i--){
+    var s=ss[i];if(!s||s.date===td)continue;
+    for(var j=(s.exercises||[]).length-1;j>=0;j--){
+      var ex=s.exercises[j],pn=ex.parent_name||parentName(ex.part,ex.name);
+      if(ex.part===part&&(names.indexOf(ex.name)>=0||names.indexOf(pn)>=0)&&ex.sets&&ex.sets.length)return{date:s.date,ex:ex};
+    }
+  }
+  return null;
+}
+/* レップ数の値を配列にする。旧データの "15  8  8" 形式に対応。
+   分解できない・想定外の形式なら空配列を返す（呼び出し側で初期値を埋めない判断に使う）。 */
+function parseRepsList(v){
+  if(v===null||v===undefined)return[];
+  if(typeof v==='number')return(isNaN(v)||v<=0)?[]:[Math.floor(v)];
+  var parts=String(v).split(/[^0-9]+/),out=[];
+  for(var i=0;i<parts.length;i++){var n=parseInt(parts[i],10);if(!isNaN(n)&&n>0)out.push(n);}
+  return out;
+}
+/* 前回記録をセット単位の配列に正規化する。
+   1セットに複数レップが入った旧形式（重さは1つ）は、レップを分解して同じ重さで各セットに割り当てる。 */
+function expandPrevSets(ex){
+  var sets=(ex&&ex.sets)||[],out=[];
+  for(var i=0;i<sets.length;i++){
+    var st=sets[i],list=parseRepsList(st.planned_reps||st.reps);
+    if(!list.length)continue;/*分解できない形式は初期値に使わない*/
+    if(list.length===1){out.push(st);continue;}/*通常の記録はそのまま*/
+    for(var j=0;j<list.length;j++){
+      var c={};for(var k in st)if(Object.prototype.hasOwnProperty.call(st,k))c[k]=st[k];
+      c.reps=list[j];c.planned_reps=list[j];c.order=out.length+1;
+      c.actualReps=null;c.actual_reps=null;c.achieved=true;/*分解後は達成/未達の対応が取れないため単純表示にする*/
+      c.split_from_multi=true;
+      out.push(c);
+    }
+  }
+  return out;
+}
+/* 前回記録のうち、今回の第orderセットに対応するセットを返す。
+   今回のほうがセット数が多い場合は前回の最終セットを使う（prevSetCompareHtml と同じ対応規則）。 */
+function prevSetForOrder(part,name,order){
+  var pe=getPrevExerciseEntry(part,parentName(part,name));
+  if(!pe)return null;
+  var sets=expandPrevSets(pe.ex);if(!sets.length)return null;
+  var idx=Math.max(0,Math.min((parseInt(order,10)||1)-1,sets.length-1));
+  return sets[idx]||sets[sets.length-1];
+}
+/* 第orderセット後の休憩秒数。前回の実測(rest_seconds)を最優先し、
+   無ければ既存の getIntFor（種目設定 em → 既定 ip → マスタ → 90秒）へフォールバック。 */
+function restSecForOrder(part,name,order){
+  var st=prevSetForOrder(part,name,order),rs=st?parseInt(st.rest_seconds,10):0;
+  if(rs>0)return rs;
+  return getIntFor(part,name);
+}
+/* 今回ユーザーが手で変えた休憩秒数があればそれを優先する（初期値は編集可能） */
+function nextRestSec(part,name,order){
+  var o=S.restOvr;
+  if(o&&o.part===part&&o.name===name&&o.order===(parseInt(order,10)||1))return safeSeconds(o.sec);
+  return safeSeconds(restSecForOrder(part,name,order));
+}
+function previewEx(part,name){
+  if(isWalkingEx(part,name)){selEx(part,name);return;}/*ウォーキングは従来どおり直行*/
+  S.pvPart=part;S.pvName=name;
+  renderPrevRecord(part,name);
+  show('sprev');
+}
+function renderPrevRecord(part,name){
+  var pn=parentName(part,name);
+  document.getElementById('pv-tt').textContent=dispName(part,pn);
+  var body=document.getElementById('pv-body'),acts=document.getElementById('pv-acts'),back=document.getElementById('pv-back');
+  var pe=getPrevExerciseEntry(part,pn);
+  if(!pe){
+    body.innerHTML='<div class="log-box"><div class="log-hd">前回の記録</div>'
+      +'<div class="log-row"><span style="font-size:15px;">前回の記録はありません</span></div></div>';
+    if(back)back.style.display='none';
+    if(acts)acts.style.gridTemplateColumns='1fr';
+    return;
+  }
+  if(back)back.style.display='';
+  if(acts)acts.style.gridTemplateColumns='';
+  var sets=expandPrevSets(pe.ex),h='';/*"15 8 8" 形式は分解して1セットずつ表示する*/
+  h+='<div class="log-box"><div class="log-hd">前回の記録 '+esc(pe.date)+'（'+esc(dLbl(pe.date))+'）</div>';
+  if(!sets.length){/*形式が想定外で分解できない場合*/
+    h+='<div class="log-row"><span style="font-size:15px;">前回の記録を読み取れませんでした</span></div></div>';
+    body.innerHTML=h;return;
+  }
+  for(var i=0;i<sets.length;i++){
+    var st=sets[i],rs=Number(st.rest_seconds||0);
+    h+='<div class="log-row">'
+      +'<span style="font-size:14px;font-weight:600;color:var(--text2);">Set'+(st.order||i+1)+'</span>'
+      +'<span style="font-size:15px;">'+esc(setDesc(part,st))+'</span>'
+      +'<span style="font-size:13px;color:var(--text2);">休憩 '+(rs>0?esc(secLbl(rs)):'-')+'</span>'
+      +'</div>';
+  }
+  h+='</div>';
+  body.innerHTML=h;
+}
+function startFromPreview(){
+  var p=S.pvPart,n=S.pvName;
+  if(!p||!n){goEx();return;}
+  selEx(p,n);
+}
 
 // =====================================================
 // WALKING / CARDIO
@@ -2204,7 +2324,7 @@ function deleteWalkRecord(si,ei,from){
 // =====================================================
 function isWalkingEx(part,name){var n=String(name||'');return part==='有酸素'||n.indexOf('ウォーキング')>=0||n.indexOf('トレッドミル')>=0||n.indexOf('有酸素')>=0;}
 function selEx(part,name){
-  S.nextDraft=null;
+  S.nextDraft=null;S.restOvr=null;/*種目を選び直したら手動の休憩変更はリセット*/
   if(isWalkingEx(part,name)){startWalk(part,name);return;}
   if(S.postActive)stopPostIntervalStopwatch();
   S.part=part;S.ex=parentName(part,name);S.origEx=name;
@@ -2216,7 +2336,9 @@ function selEx(part,name){
   else{ss[si].exercises[ei].parent_name=ss[si].exercises[ei].parent_name||S.ex;ss[si].exercises[ei].original_name=ss[si].exercises[ei].original_name||name;}
   S.sess=ss[si];S.exE=ss[si].exercises[ei];pS(ss);
   var sets=S.exE.sets||[];
-  if(sets.length>0){var l=sets[sets.length-1];S.w=l.weight_kg||0;S.r=l.reps||10;}
+  var ps=prevSetForOrder(part,S.ex,sets.length+1);/*前回のセット単位の値を初期値に使う*/
+  if(ps){S.w=parseFloat(ps.weight_kg)||0;S.r=Math.max(1,parseInt(ps.planned_reps||ps.reps,10)||10);}
+  else if(sets.length>0){var l=sets[sets.length-1];S.w=l.weight_kg||0;S.r=l.reps||10;}
   else{var pv=getPrevAny(part,S.ex);S.w=pv.w||0;S.r=pv.r||10;}
   S.vari=varFromName(part,name);
   initAC();silence();
@@ -2233,7 +2355,7 @@ function renderSet(){
   document.getElementById('r-lbl').textContent=isCardio()?'時間':'レップ数';
   document.getElementById('r-unit').textContent=isCardio()?'分':'回';
   document.getElementById('w-boost').style.display=isCardio()?'none':'grid';
-  var prev=getPrevAny(S.part,S.ex),pr=bestForNames(S.part,aliasesFor(S.part,S.ex)),intSec=getIntFor(S.part,S.ex);
+  var prev=getPrevAny(S.part,S.ex),pr=bestForNames(S.part,aliasesFor(S.part,S.ex)),intSec=nextRestSec(S.part,S.ex,sets.length+1);
   document.getElementById('s-prev').textContent=(prev.w>0?fmt(prev.w)+'kg':'自重')+' x '+rep(prev.r);
   document.getElementById('s-pr').textContent=pr>0?fmt(pr)+'kg':'-';
   document.getElementById('s-int').textContent=secLbl(intSec);
@@ -2287,14 +2409,21 @@ function bindSetNumberInputs(){
   dbg('edit-reps buttons bound='+reps.length);
 }
 function adjSetRest(d){
-  var sec=Math.max(30,getSafeIntervalSeconds(S.part,S.ex)+d);
+  var ord=(S.exE&&S.exE.sets?S.exE.sets.length:0)+1;
+  var sec=Math.max(30,nextRestSec(S.part,S.ex,ord)+d);
+  S.restOvr={part:S.part,name:S.ex,order:ord,sec:sec};/*手動変更を今回分として優先*/
   var ip=gIP();ip[S.ex]=sec;pIP(ip);setPref(S.part,S.ex,{interval:sec});
   var rv=document.getElementById('set-rest-val');if(rv)rv.textContent=secLbl(sec);
   var si=document.getElementById('s-int');if(si)si.textContent=secLbl(sec);
   dbg('rest setting changed exercise='+S.ex+' sec='+sec);
 }
 function prepareNextDraft(set){
-  if(!set)return;S.nextDraft={weight:parseFloat(set.weight_kg)||0,reps:Math.max(1,parseInt(set.planned_reps||set.reps||S.r,10)||1),variation:set.variation||set.memo||S.vari||'標準'};renderNextDraft();
+  if(!set)return;
+  var vr=set.variation||set.memo||S.vari||'標準';
+  var nx=prevSetForOrder(S.part,S.ex,(parseInt(set.order,10)||0)+1);/*前回の対応セットを次セットの初期値に使う*/
+  if(nx)S.nextDraft={weight:parseFloat(nx.weight_kg)||0,reps:Math.max(1,parseInt(nx.planned_reps||nx.reps,10)||1),variation:vr};
+  else S.nextDraft={weight:parseFloat(set.weight_kg)||0,reps:Math.max(1,parseInt(set.planned_reps||set.reps||S.r,10)||1),variation:vr};
+  renderNextDraft();
 }
 function renderNextDraft(){
   var card=document.getElementById('next-draft-card');if(!card)return;
@@ -2736,7 +2865,7 @@ function startInt(){
   var sets=S.exE.sets||[],last=sets[sets.length-1];
   if(!last){dbg('startInt stop: last set missing');return;}
   prepareNextDraft(last);
-  S.tTgt=getSafeIntervalSeconds(S.part,S.ex);dbg('interval seconds='+S.tTgt);S.tS=Date.now();S.tPau=false;S.tEl=0;S.tBp=false;S.tDangerLogged=false;if(S.tAutoTo){clearTimeout(S.tAutoTo);S.tAutoTo=null;}
+  S.tTgt=nextRestSec(S.part,S.ex,last.order||((sets.length)||1));dbg('interval seconds='+S.tTgt);S.tS=Date.now();S.tPau=false;S.tEl=0;S.tBp=false;S.tDangerLogged=false;if(S.tAutoTo){clearTimeout(S.tAutoTo);S.tAutoTo=null;}
   hideGoOverlay();
   resetIntervalScroll();
   document.getElementById('i-nm').textContent=dispName(S.part,S.ex);
