@@ -827,7 +827,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="date-bar"><div class="dt" id="h-dt"></div><div class="si" id="h-si"></div></div>
     <div class="summary-card" id="h-sum"></div>
   </div>
-  <div class="app-version">UI v3.18 prev-record-safe</div>
+  <div class="app-version">UI v3.18.1 empty-safe</div>
   <div class="home-elapsed-wrap"><span class="elapsed-chip" data-elapsed-chip="home"></span></div>
   <div class="backup-warn" id="home-backup-warn">バックアップから7日以上経っています</div>
   <div class="scroll"><div class="home-sec">Body Parts</div><div class="parts-stack" id="h-pg"></div></div>
@@ -1163,7 +1163,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="hdr-title">設定</div><div class="hdr-r"></div>
   </div>
   <div class="scroll"><div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
-    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.18 prev-record-safe</div></div></div>
+    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.18.1 empty-safe</div></div></div>
     <div class="panel">
       <div class="panel-h">端末・同期</div>
       <div class="panel-b form-grid">
@@ -1649,6 +1649,26 @@ function exerciseHasTrainingActivity(ex){
   if(!ex)return false;if((ex.sets||[]).length)return true;if(!(ex.type==='walking'||ex.cardio))return false;
   var c=ex.cardio||{};return !!(c.startTime||c.endTime||Number(c.duration||c.finalTime||0)>0||c.saved===true||c.completed===true||c.status==='active'||c.status==='finished');
 }
+function sessionActivityExercises(s){var out=[],es=(s&&s.exercises)||[];for(var i=0;i<es.length;i++)if(exerciseHasTrainingActivity(es[i]))out.push(es[i]);return out;}
+function sessionActivityExerciseRefs(s){var out=[],es=(s&&s.exercises)||[];for(var i=0;i<es.length;i++)if(exerciseHasTrainingActivity(es[i]))out.push({index:i,ex:es[i]});return out;}
+function sessionHasTrainingActivity(s){return sessionActivityExercises(s).length>0;}
+function cleanupCurrentEmptySelection(){
+  if(!S.exE||exerciseHasTrainingActivity(S.exE))return false;
+  var ss=gS(),td=toDay(),changed=false;
+  for(var si=0;si<ss.length;si++){
+    var sess=ss[si];if(!sess||sess.date!==td)continue;
+    var es=sess.exercises||[];
+    for(var ei=es.length-1;ei>=0;ei--){
+      var ex=es[ei],nm=ex.parent_name||ex.name;
+      if(ex.part===S.part&&(nm===S.ex||ex.name===S.ex)&&!exerciseHasTrainingActivity(ex)){
+        es.splice(ei,1);changed=true;break;
+      }
+    }
+    if(changed){pruneEmptySession(ss,si);break;}
+  }
+  if(changed){pS(ss);S.sess=null;S.exE=null;S.nextDraft=null;updateGlobalElapsed();dbg('empty exercise selection cleaned');}
+  return changed;
+}
 function todayTrainingStartMs(){
   var s=getTodSess();if(!s)return 0;
   var times=[],has=false,es=s.exercises||[];
@@ -1685,7 +1705,7 @@ function startGlobalElapsed(){
 // =====================================================
 // HOME
 // =====================================================
-function goHome(){renderHome();show('sh');}
+function goHome(){cleanupCurrentEmptySelection();renderHome();show('sh');}
 function renderHome(){
   document.getElementById('h-dt').textContent=toDayDisp();
   var sess=getTodSess();
@@ -1749,7 +1769,7 @@ function renderExList(part){
   var list=document.getElementById('ex-list');list.innerHTML='';
   var exs=getDisplayExList(part);
   var sess=getTodSess(),done=[];
-  if(sess)for(var i=0;i<(sess.exercises||[]).length;i++)if(sess.exercises[i].part===part)done.push(sess.exercises[i].parent_name||parentName(part,sess.exercises[i].name));
+  if(sess)for(var i=0;i<(sess.exercises||[]).length;i++){var de=sess.exercises[i];if(de.part===part&&exerciseHasTrainingActivity(de))done.push(de.parent_name||parentName(part,de.name));}
 
   if(done.length>0){
     var gd=addST(list,'今日すでにやった種目');
@@ -1871,7 +1891,7 @@ function saveCustomExercise(){
   if(!AX.hidden)selEx(p,name);
 }
 function showAE(){openAddExercise();}
-function goEx(){renderExList(S.part);show('sex');}
+function goEx(){cleanupCurrentEmptySelection();renderExList(S.part);show('sex');}
 /* ===== 前回の記録 確認画面（読み取り専用・tsは書き換えない） ===== */
 function getPrevExerciseEntry(part,name){
   var ss=gS(),names=aliasesFor(part,name),td=toDay();
@@ -3040,7 +3060,7 @@ function summaryDataForDate(date){
   if(!s)return d;
   var exs=s.exercises||[];
   for(var i=0;i<exs.length;i++){
-    var ex=exs[i],part=ex.part||'',isWalk=ex.type==='walking'||!!ex.cardio;
+    var ex=exs[i];if(!exerciseHasTrainingActivity(ex))continue;var part=ex.part||'',isWalk=ex.type==='walking'||!!ex.cardio;
     if(isWalk){
       var c=ex.cardio||{};d.walking.count++;
       d.walking.min+=Number(c.duration||c.finalTime||0)||0;
@@ -3137,7 +3157,7 @@ function showDailySummary(){
     +'<div class="end-grid" style="padding:0 16px 24px"><button class="wide-btn dk" onclick="showToday()">今日の記録へ戻る</button><button class="wide-btn dk" onclick="goHome()">ホームへ戻る</button><button class="wide-btn" onclick="copyDailySummary()">今日のまとめをコピー</button><button class="wide-btn" onclick="expData()">バックアップを書き出す</button></div>';
   show('ssummary');
 }
-function resumeLast(){var s=getTodSess();if(!s||!(s.exercises||[]).length){goHome();return;}var ex=s.exercises[s.exercises.length-1];selEx(ex.part,ex.parent_name||ex.name);}
+function resumeLast(){var s=getTodSess(),exs=sessionActivityExercises(s);if(!s||!exs.length){goHome();return;}var ex=exs[exs.length-1];selEx(ex.part,ex.parent_name||ex.name);}
 
 // =====================================================
 // NUM MODAL
@@ -3178,16 +3198,17 @@ function nc(){
 // =====================================================
 function showToday(){
   var bd=document.getElementById('today-bd'),s=getTodSess();bd.innerHTML='';
-  if(!s||!(s.exercises||[]).length){bd.innerHTML='<div style="padding:40px;text-align:center;color:#777;">今日の記録はまだありません</div>';show('stoday');return;}
+  var activeRefs=sessionActivityExerciseRefs(s);
+  if(!s||!activeRefs.length){bd.innerHTML='<div style="padding:40px;text-align:center;color:#777;">今日の記録はまだありません</div>';show('stoday');return;}
   var parts={};
-  for(var i=0;i<s.exercises.length;i++){
-    var ex=s.exercises[i],p=ex.part||'その他';if(!parts[p])parts[p]=[];parts[p].push(ex);
+  for(var i=0;i<activeRefs.length;i++){
+    var ex=activeRefs[i].ex,p=ex.part||'その他';if(!parts[p])parts[p]=[];parts[p].push(activeRefs[i]);
   }
   for(var pi=0;pi<PARTS.length;pi++){
     var part=PARTS[pi];if(!parts[part])continue;
     var box=document.createElement('div');box.className='today-part';box.innerHTML='<div class="today-h">'+esc(part)+'</div>';
     for(var j=0;j<parts[part].length;j++){
-      var ex=parts[part][j],todaySi=findSessionIndex(s.id,s.date),todayEi=findExerciseIndex(todaySi,ex);
+      var ref=parts[part][j],ex=ref.ex,todaySi=findSessionIndex(s.id,s.date),todayEi=ref.index;
       var html='<div class="today-ex"><div class="today-ex-name"><span>'+esc(ex.parent_name||ex.name)+'</span><span class="row-actions"><button class="mini-btn" onclick="'+(ex.type==='walking'||ex.cardio?'openWalkEdit('+todaySi+','+todayEi+',\'today\')':'selEx(\''+esc(ex.part)+'\',\''+esc(ex.parent_name||ex.name)+'\')')+'">'+(ex.type==='walking'||ex.cardio?'編集':'セット追加')+'</button>'
         +(ex.type==='walking'||ex.cardio?'<button class="mini-btn red" onclick="deleteWalkRecord('+todaySi+','+todayEi+',\'today\')">削除</button>':'<button class="mini-btn" onclick="showHistExercise(\''+esc(ex.part)+'\',\''+esc(ex.parent_name||ex.name)+'\')">履歴</button><button class="mini-btn red" onclick="deleteExerciseRecord('+todaySi+','+todayEi+',\'today\')">種目削除</button>')+'</span></div>';
       if(ex.type==='walking'||ex.cardio){
@@ -3412,7 +3433,7 @@ function renderHistGraph(preserve){
   var bd=document.getElementById('hist-bd'),top=preserve?bd.scrollTop:0,data=graphData();bd.innerHTML=histTabs('graph')+'<div class="graph-page">'+renderGraphControls()+renderPartBalance(data)+renderMonthlyTrend(data)+renderExerciseGrowth(data)+renderHeatmap(data)+renderAchievement(data)+renderWalkingTrend(data)+renderRanking(data)+'<div class="graph-footnote">全期間のセット数・総重量・種目ランキングは古い埋め込み履歴も含みます。達成率・心拍などは値が保存されている記録だけを集計します。</div></div>';show('shist');if(preserve)bd.scrollTop=top;setTimeout(function(){var xs=document.querySelectorAll('[data-graph-end]');for(var i=0;i<xs.length;i++)xs[i].scrollLeft=xs[i].scrollWidth;},0);
 }
 function showHistGraph(){renderHistGraph(false);}
-function trainingDates(){var map={},out=[],ss=gS().filter(function(s){return s&&s.date;});for(var i=0;i<ss.length;i++)map[ss[i].date]=ss[i];if(HD)for(var h=0;h<HD.length;h++)if(HD[h]&&HD[h].d&&!isHistoryDateDeleted(HD[h].d)&&!map[HD[h].d])map[HD[h].d]={date:HD[h].d,exercises:[]};for(var d in map)out.push(map[d]);out.sort(function(a,b){return String(b.date).localeCompare(String(a.date));});return out;}
+function trainingDates(){var map={},out=[],ss=gS().filter(function(s){return s&&s.date&&sessionHasTrainingActivity(s);});for(var i=0;i<ss.length;i++)map[ss[i].date]=ss[i];if(HD)for(var h=0;h<HD.length;h++)if(HD[h]&&HD[h].d&&!isHistoryDateDeleted(HD[h].d)&&!map[HD[h].d])map[HD[h].d]={date:HD[h].d,exercises:[]};for(var d in map)out.push(map[d]);out.sort(function(a,b){return String(b.date).localeCompare(String(a.date));});return out;}
 function showHistDaily(){
   dbg('renderDailyHistory called');var bd=document.getElementById('hist-bd'),ss=trainingDates();dbg('daily records count='+ss.length);
   bd.innerHTML=histTabs('daily')+'<div id="hist-cal"></div><div class="sec-title">日別一覧</div><div class="hist-list" id="daily-list"></div>';
@@ -3436,7 +3457,7 @@ function showHistDaily(){
 function mainPartClassForSession(sess){
   var exs=(sess&&sess.exercises)||[],count={},hasWalk=false;
   for(var i=0;i<exs.length;i++){
-    var ex=exs[i],isWalk=ex.type==='walking'||!!ex.cardio;
+    var ex=exs[i];if(!exerciseHasTrainingActivity(ex))continue;var isWalk=ex.type==='walking'||!!ex.cardio;
     if(isWalk){hasWalk=true;continue;}
     var p=ex.part||'',n=(ex.sets||[]).length;if(!p||!n)continue;
     count[p]=(count[p]||0)+n;
@@ -3447,7 +3468,7 @@ function mainPartClassForSession(sess){
 }
 function renderHistoryCalendar(){
   var el=document.getElementById('hist-cal');if(!el)return;var ss=gS(),has={};
-  for(var i=0;i<ss.length;i++)if(ss[i].date)has[ss[i].date]=mainPartClassForSession(ss[i]);
+  for(var i=0;i<ss.length;i++)if(ss[i].date&&sessionHasTrainingActivity(ss[i]))has[ss[i].date]=mainPartClassForSession(ss[i]);
   if(HD)for(var h=0;h<HD.length;h++){var hh=HD[h];if(hh&&hh.d&&!isHistoryDateDeleted(hh.d)&&!has.hasOwnProperty(hh.d))has[hh.d]=partClass(hh.p)||'';}
   var parts=(S.histMonth||toDay().slice(0,7)).split('-'),y=parseInt(parts[0],10),m=parseInt(parts[1],10)-1;
   var first=new Date(y,m,1),last=new Date(y,m+1,0),start=first.getDay(),days=last.getDate(),html='<div class="daily-cal"><div class="cal-head"><button class="cal-nav" onclick="moveHistMonth(-1)">前月</button><div class="cal-title">'+y+'年'+(m+1)+'月</div><button class="cal-nav" onclick="moveHistMonth(1)">次月</button></div><div class="cal-grid">';
@@ -3466,10 +3487,10 @@ function openDailyDetail(date){
     +'<div class="summary-section"><div class="summary-title">部位別まとめ</div>'+dailyPartSummary(d)+'</div><div class="summary-section"><div class="summary-title">種目別詳細</div><div id="daily-ex-detail"></div></div>'
     +'<div class="summary-section"><div class="summary-title">ウォーキング</div>'+summaryLine('回数',d.walking.count+'回')+summaryLine('合計時間',d.walking.min+'分')+summaryLine('距離',fmt2(d.walking.km)+'km')+summaryLine('消費',d.walking.cal+'kcal')+summaryLine('心拍',hrs.length?'平均 '+avg+' / 最大 '+max:'未記録')+'</div>';
   var wrap=document.getElementById('daily-ex-detail'),legacy=legacyRowsForDate(date);
-  if((!s||!(s.exercises||[]).length)&&!legacy.length){wrap.innerHTML='<div class="hist-row"><div class="hist-row-title">記録なし</div></div>';show('shist');return;}
-  var liveExs=(s&&s.exercises)||[];
-  for(var ei=0;ei<liveExs.length;ei++){
-    var ex=liveExs[ei];
+  var liveRefs=sessionActivityExerciseRefs(s);
+  if(!liveRefs.length&&!legacy.length){wrap.innerHTML='<div class="hist-row"><div class="hist-row-title">記録なし</div></div>';show('shist');return;}
+  for(var ri=0;ri<liveRefs.length;ri++){
+    var ex=liveRefs[ri].ex,ei=liveRefs[ri].index;
     if(ex.type==='walking'||ex.cardio){var row=document.createElement('div');row.className='hist-row';row.innerHTML='<div class="hist-row-title">有酸素 / '+esc(ex.parent_name||ex.name||'ウォーキング')+'</div><div class="hist-row-sub">編集できます</div><div class="row-actions"><button class="mini-btn" onclick="openWalkEdit('+si+','+ei+',\'daily:'+date+'\')">編集</button><button class="mini-btn red" onclick="deleteWalkRecord('+si+','+ei+',\'daily:'+date+'\')">削除</button></div>';wrap.appendChild(row);continue;}
     var box=document.createElement('div');box.className='hist-row';var sets=ex.sets||[],vol=0,body=0,lines='';
     for(var k=0;k<sets.length;k++){var st=sets[k],v=calcSetVolume(st);vol+=v;if(!v)body++;var r=Number(st.actualReps||st.actual_reps||st.reps||0)||0,w=Number(st.weight_kg||0)||0;lines+='<div class="detail-set"><div class="setno">'+(st.order||k+1)+'set</div><div><b>'+esc(setDesc(ex.part,st))+'</b><div class="calc">'+(v?(fmt(w)+'kg × '+r+' = '+fmtKg(v)):'自重・重量未記録')+' / '+esc(st.variation||st.memo||'標準')+'</div></div><div class="detail-actions"><button class="mini-btn" onclick="openSetEdit('+si+','+ei+','+k+',\'daily:'+date+'\')">編集</button><button class="mini-btn red" onclick="deleteSetRecord('+si+','+ei+','+k+',\'daily:'+date+'\')">削除</button></div></div>';}
@@ -3485,7 +3506,7 @@ function openDailyDetail(date){
 }
 function deleteDayRecord(date){
   date=String(date||'');if(!date)return;
-  var ss=gS(),hasLive=false;for(var i=0;i<ss.length;i++)if(ss[i]&&ss[i].date===date){hasLive=true;break;}
+  var ss=gS(),hasLive=false;for(var i=0;i<ss.length;i++)if(ss[i]&&ss[i].date===date&&sessionHasTrainingActivity(ss[i])){hasLive=true;break;}
   var hasLegacy=legacyRowsForDate(date).length>0,hasMemo=!!dailyMemo(date);
   if(!hasLive&&!hasLegacy&&!hasMemo){showToast('この日の記録はありません','info');showHistDaily();return;}
   if(!confirm(dateDisp(date)+' の筋トレ・ウォーキング・メモをすべて削除しますか？'))return;
