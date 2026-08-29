@@ -827,7 +827,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="date-bar"><div class="dt" id="h-dt"></div><div class="si" id="h-si"></div></div>
     <div class="summary-card" id="h-sum"></div>
   </div>
-  <div class="app-version">UI v3.18.1 empty-safe</div>
+  <div class="app-version">UI v3.19.0 prev-record</div>
   <div class="home-elapsed-wrap"><span class="elapsed-chip" data-elapsed-chip="home"></span></div>
   <div class="backup-warn" id="home-backup-warn">バックアップから7日以上経っています</div>
   <div class="scroll"><div class="home-sec">Body Parts</div><div class="parts-stack" id="h-pg"></div></div>
@@ -1163,7 +1163,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="hdr-title">設定</div><div class="hdr-r"></div>
   </div>
   <div class="scroll"><div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
-    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.18.2 interval-edit-safe</div></div></div>
+    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.19.0 prev-record</div></div></div>
     <div class="panel">
       <div class="panel-h">端末・同期</div>
       <div class="panel-b form-grid">
@@ -2604,7 +2604,7 @@ function startStrengthIntervalDirect(savedSet){
   dbg('startStrengthIntervalDirect called');
   if(!savedSet){dbg('startStrengthIntervalDirect stop: no savedSet');return;}
   if(!isStrengthRecord(savedSet)){dbg('direct skip non strength');return;}
-  var sec=getSafeIntervalSeconds(savedSet.part||S.part,savedSet.exercise||S.ex);
+  var sec=nextRestSec(savedSet.part||S.part,savedSet.exercise||S.ex,savedSet.order);
   sec=Number(sec);if(!sec||isNaN(sec)||sec<=0)sec=90;
   S.part=savedSet.part||S.part;S.ex=savedSet.exercise||S.ex;S.tTgt=sec;
   S.intervalCtx={part:S.part,exercise:S.ex,setNumber:savedSet.order,weight:savedSet.weight_kg,reps:savedSet.reps,variation:savedSet.variation||savedSet.memo||S.vari||'標準'};
@@ -2647,7 +2647,7 @@ function afterStrengthSetSaved(savedSet){
 function beginStrengthInterval(savedSet){
   dbg('beginStrengthInterval called');
   var part=(savedSet&&savedSet.part)||S.part,ex=(savedSet&&savedSet.exercise)||S.ex;
-  var sec=getSafeIntervalSeconds(part,ex);
+  var sec=nextRestSec(part,ex,(savedSet&&savedSet.order)||((S.exE&&S.exE.sets&&S.exE.sets.length)||1));
   if(!sec||isNaN(sec)||sec<=0)sec=90;
   S.part=part;S.ex=ex;S.tTgt=sec;
   S.intervalCtx={
@@ -2965,10 +2965,15 @@ function togP(){
   if(S.tPau){S.tS=Date.now();S.tPau=false;document.getElementById('t-pb').textContent='⏸ 一時停止';}
   else{S.tEl=getEl();S.tPau=true;document.getElementById('t-pb').textContent='▶ 再開';}
 }
+var REST_MAX_SEC=600;/*10分超の休憩は放置とみなし実測値として保存しない*/
 function saveRest(){
   var el=getEl(),ss=gS(),td=toDay(),si=-1;for(var i=0;i<ss.length;i++)if(ss[i].date===td){si=i;break;}if(si<0)return;
   var ei=-1;for(var i=0;i<(ss[si].exercises||[]).length;i++){var ex0=ss[si].exercises[i];if(ex0.part===S.part&&(ex0.name===S.ex||ex0.parent_name===S.ex)){ei=i;break;}}if(ei<0)return;
-  var sets=ss[si].exercises[ei].sets;if(sets.length>0)sets[sets.length-1].rest_seconds=el;
+  var sets=ss[si].exercises[ei].sets;
+  if(sets.length>0){
+    if(el>0&&el<=REST_MAX_SEC)sets[sets.length-1].rest_seconds=el;
+    else dbg('rest_seconds skipped el='+el+' limit='+REST_MAX_SEC);
+  }
   var ip=gIP();ip[S.ex]=S.tTgt;pIP(ip);setPref(S.part,S.ex,{interval:S.tTgt});pS(ss);S.exE=ss[si].exercises[ei];
 }
 function stopTimer(){
