@@ -298,8 +298,8 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
 .set-nav{display:flex;align-items:center;padding:10px 8px;}
 .set-name-lbl{flex:1;text-align:center;font-size:21px;font-weight:900;overflow:hidden;
   white-space:nowrap;text-overflow:ellipsis;padding:0 4px;}
-#sset .set-name-lbl{text-align:right;padding-right:10px;}
-#si .hdr-title{text-align:left;padding-right:10px;}
+#sset .set-name-lbl{text-align:left;padding-left:8px;padding-right:4px;}
+#si .hdr-title{text-align:left;padding-left:0;padding-right:10px;}
 #si .hdr-title{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
 .set-ctr{padding:10px 16px 12px;border-top:1px solid #252525;}
 .set-head{display:flex;justify-content:center;align-items:center;}
@@ -1163,7 +1163,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="hdr-title">設定</div><div class="hdr-r"></div>
   </div>
   <div class="scroll"><div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
-    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.18.1 empty-safe</div></div></div>
+    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.18.2 interval-edit-safe</div></div></div>
     <div class="panel">
       <div class="panel-h">端末・同期</div>
       <div class="panel-b form-grid">
@@ -3022,12 +3022,12 @@ function returnToInterval(si,ei){
   var ss=gS(),ex=ss[si]&&ss[si].exercises&&ss[si].exercises[ei],sets=(ex&&ex.sets)||[];
   if(!ex||!sets.length){
     stopTimer();S.nextDraft=null;
-    if(ex){S.exE=ex;renderSet();show('sset');bindStrengthActionButtons();bindSetNumberInputs();}
+    if(ex){S.sess=ss[si]||S.sess;S.part=ex.part||S.part;S.ex=ex.parent_name||ex.name||S.ex;S.exE=ex;renderSet();show('sset');bindStrengthActionButtons();bindSetNumberInputs();}
     else goEx();
     showToast('セットが無くなったため記録画面に戻りました','info');
     return;
   }
-  S.exE=ex;
+  S.sess=ss[si]||S.sess;S.part=ex.part||S.part;S.ex=ex.parent_name||ex.name||S.ex;S.exE=ex;
   var last=sets[sets.length-1];
   S.intervalCtx={part:S.part,exercise:S.ex,setNumber:last.order,weight:last.weight_kg,reps:last.reps,variation:last.variation||last.memo||'標準'};
   prepareNextDraft(last);
@@ -3038,6 +3038,17 @@ function returnToInterval(si,ei){
   tickT();
   if(S.tBp)updAutoLbl(true);
   dbg('returned to interval after record mutation');
+}
+function returnToSetAfterIntervalDelete(si,ei){
+  stopTimer();S.nextDraft=null;S.tPau=false;S.tBp=false;
+  var ss=gS(),ex=ss[si]&&ss[si].exercises&&ss[si].exercises[ei];
+  if(ex){
+    S.sess=ss[si]||S.sess;S.part=ex.part||S.part;S.ex=ex.parent_name||ex.name||S.ex;S.exE=ex;
+    renderSet();show('sset');bindStrengthActionButtons();bindSetNumberInputs();
+  }else{
+    S.exE=null;goEx();
+  }
+  showToast('直前セットを削除したため、セット入力画面に戻りました','info');
 }
 function endEx(){
   saveRest();stopTimer();S.nextDraft=null;if(S.postActive)stopPostIntervalStopwatch();
@@ -3609,7 +3620,10 @@ function deleteSetFromEdit(){var r=S.recRef;if(!r)return;deleteSetRecord(r.si,r.
 function deleteSetRecord(si,ei,ki,from){
   var ss=gS(),ex=ss[si]&&ss[si].exercises&&ss[si].exercises[ei];if(!ex||!ex.sets||!ex.sets[ki])return;
   if(!confirm('このセットを削除しますか？'))return;
-  ex.sets.splice(ki,1);renumberSets(ex);pS(ss);markPrFlags();syncCurrentAfterMutation(si,ei);closeRec();refreshAfterRecordMutation(from,si,ei);
+  var wasInterval=from==='interval';
+  ex.sets.splice(ki,1);renumberSets(ex);pS(ss);markPrFlags();syncCurrentAfterMutation(si,ei);closeRec();
+  if(wasInterval){returnToSetAfterIntervalDelete(si,ei);return;}
+  refreshAfterRecordMutation(from,si,ei);
 }
 function deleteExerciseRecord(si,ei,from){
   var ss=gS(),ex=ss[si]&&ss[si].exercises&&ss[si].exercises[ei];if(!ex)return;
