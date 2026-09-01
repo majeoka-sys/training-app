@@ -827,7 +827,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="date-bar"><div class="dt" id="h-dt"></div><div class="si" id="h-si"></div></div>
     <div class="summary-card" id="h-sum"></div>
   </div>
-  <div class="app-version">UI v3.18.3 rest-carryover</div>
+  <div class="app-version">UI v3.19.1 cardio-prev-safe</div>
   <div class="home-elapsed-wrap"><span class="elapsed-chip" data-elapsed-chip="home"></span></div>
   <div class="backup-warn" id="home-backup-warn">バックアップから7日以上経っています</div>
   <div class="scroll"><div class="home-sec">Body Parts</div><div class="parts-stack" id="h-pg"></div></div>
@@ -1163,7 +1163,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="hdr-title">設定</div><div class="hdr-r"></div>
   </div>
   <div class="scroll"><div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
-    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.18.3 rest-carryover</div></div></div>
+    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.19.1 cardio-prev-safe</div></div></div>
     <div class="panel">
       <div class="panel-h">端末・同期</div>
       <div class="panel-b form-grid">
@@ -1535,7 +1535,7 @@ var S={part:null,ex:null,sess:null,exE:null,
   wk:null,wkIv:null,wkStartMs:0,wkElapsedAdd:0,wkPaused:false,wkPauseAt:0,wkSi:-1,wkEi:-1,
   recType:null,recRef:null,histPart:null,histEx:null,histDate:null,histMonth:null,globalElapsedIv:null,nextDraft:null,
   numT:null,numStr:'0',
-  pvPart:null,pvName:null,restOvr:null};
+  pvPart:null,pvName:null,restOvr:null,walkStartDraft:null};
 
 // =====================================================
 // SCREEN
@@ -1953,15 +1953,81 @@ function nextRestSec(part,name,order){
   if(o&&o.part===part&&o.name===name&&o.order===(parseInt(order,10)||1))return safeSeconds(o.sec);
   return safeSeconds(restSecForOrder(part,name,order));
 }
+function cardioExerciseMatches(ex,part,name){
+  if(!ex||!(ex.part==='有酸素'||ex.type==='walking'||ex.cardio))return false;
+  var pn=parentName(part,name),en=ex.parent_name||ex.name||'ウォーキング',names=aliasesFor(part,pn);
+  return names.indexOf(en)>=0||names.indexOf(ex.name)>=0||parentName(part,en)===pn;
+}
+function getPrevCardioEntry(part,name){
+  var ss=gS(),td=toDay();
+  for(var i=ss.length-1;i>=0;i--){
+    var s=ss[i];if(!s||s.date===td)continue;
+    for(var j=(s.exercises||[]).length-1;j>=0;j--){
+      var ex=s.exercises[j];if(!cardioExerciseMatches(ex,part,name)||!exerciseHasTrainingActivity(ex))continue;
+      var c=ex.cardio||{};if(c.startTime||c.endTime||Number(c.duration||c.finalTime||0)>0||c.status==='finished')return{date:s.date,ex:ex,cardio:c};
+    }
+  }
+  return null;
+}
+function walkHeartSummary(c){
+  var hrs=[],cps=(c&&c.checkpoints)||[];
+  for(var i=0;i<cps.length;i++){var h=Number(cps[i].heartRate||0);if(h>0)hrs.push(h);}
+  var cur=Number(c&&c.heartRate||0);if(cur>0)hrs.push(cur);
+  if(!hrs.length)return '-';
+  var avg=Math.round(hrs.reduce(function(a,b){return a+b;},0)/hrs.length),max=Math.max.apply(null,hrs);
+  return '平均 '+avg+' / 最大 '+max;
+}
+function safeWalkStartDraft(d){
+  var def=walkDefaults();d=d||{};
+  var inc=parseFloat(d.incline),spd=parseFloat(d.speed),tm=parseInt(d.targetMin,10);
+  if(isNaN(inc)||inc<0||inc>25)inc=def.incline;
+  if(isNaN(spd)||spd<=0||spd>20)spd=def.speed;
+  if(!tm||tm<=0||tm>300)tm=def.targetMin;
+  return{incline:parseFloat(inc.toFixed(1)),speed:parseFloat(spd.toFixed(1)),targetMin:tm};
+}
+function cardioStartDraftFromRecord(c){
+  c=normalizeWalkPrep(Object.assign({},c||{}));
+  var start=null,ch=(c.changes||[]).slice().sort(function(a,b){return(a.timeMin||0)-(b.timeMin||0);});
+  for(var i=0;i<ch.length;i++)if(ch[i]&&(ch[i].incline!==undefined||ch[i].speed!==undefined)){start=ch[i];break;}
+  return safeWalkStartDraft({incline:start&&start.incline!==undefined?start.incline:c.incline,speed:start&&start.speed!==undefined?start.speed:c.speed,targetMin:c.targetMin||c.duration||c.finalTime});
+}
+function prevCardioStartDraft(part,name){
+  var pe=getPrevCardioEntry(part,name);return pe?cardioStartDraftFromRecord(pe.cardio):null;
+}
+function renderPrevCardioRecord(part,name){
+  var pn=parentName(part,name),body=document.getElementById('pv-body'),acts=document.getElementById('pv-acts'),back=document.getElementById('pv-back'),pe=getPrevCardioEntry(part,pn),def=walkDefaults();
+  if(back)back.style.display='';
+  if(acts)acts.style.gridTemplateColumns='';
+  if(!pe){
+    body.innerHTML='<div class="log-box"><div class="log-hd">前回の有酸素記録</div>'
+      +'<div class="log-row"><span style="font-size:15px;">前回の記録はありません</span></div>'
+      +'<div class="summary-section"><div class="summary-title">今回の初期値</div>'
+      +summaryLine('傾斜',esc(fmt1(def.incline)))+summaryLine('速度',esc(fmt1(def.speed)))+summaryLine('目標時間',esc(def.targetMin+'分'))+'</div>'
+      +'<div class="hist-row-sub" style="padding:0 2px 10px;">開始すると、現在のウォーキング初期値で準備画面を開きます。見るだけでは今日の記録には入りません。</div></div>';
+    return;
+  }
+  var c=pe.cardio||{},draft=cardioStartDraftFromRecord(c),ch=(c.changes||[]).slice().sort(function(a,b){return(a.timeMin||0)-(b.timeMin||0);}),changes='';
+  for(var i=0;i<Math.min(ch.length,6);i++){
+    var x=ch[i];changes+='<div class="log-row"><span style="font-size:14px;color:var(--text2);">'+esc((x.timeMin||0)+'分')+'</span><span style="font-size:15px;">傾斜 '+esc(fmt1(x.incline))+' / 速度 '+esc(fmt1(x.speed))+'</span><span style="font-size:13px;color:var(--text2);">'+esc(x.note||'')+'</span></div>';
+  }
+  if(ch.length>6)changes+='<div class="hist-row-sub">ほか '+(ch.length-6)+'件の変更履歴があります</div>';
+  body.innerHTML='<div class="log-box"><div class="log-hd">前回の有酸素記録 '+esc(pe.date)+'（'+esc(dLbl(pe.date))+'）</div>'
+    +'<div class="summary-section"><div class="summary-title">前回の結果</div>'
+    +summaryLine('時間',esc((c.duration||c.finalTime||0)+'分'))+summaryLine('距離',esc(c.finalDistance?fmt2(c.finalDistance)+'km':'-'))+summaryLine('消費',esc(c.finalCalories?c.finalCalories+'kcal':'-'))+summaryLine('心拍',esc(walkHeartSummary(c)))+'</div>'
+    +'<div class="summary-section"><div class="summary-title">今回へ反映する初期値</div>'
+    +summaryLine('傾斜',esc(fmt1(draft.incline)))+summaryLine('速度',esc(fmt1(draft.speed)))+summaryLine('目標時間',esc(draft.targetMin+'分'))+'</div>'
+    +(changes?'<div class="summary-section"><div class="summary-title">前回の傾斜・速度変更</div>'+changes+'</div>':'')
+    +'<div class="hist-row-sub" style="padding:0 2px 10px;">開始すると上の初期値を準備画面へ入れます。距離・消費・心拍などの過去結果はコピーしません。</div></div>';
+}
 function previewEx(part,name){
-  if(isWalkingEx(part,name)){selEx(part,name);return;}/*ウォーキングは従来どおり直行*/
-  S.pvPart=part;S.pvName=name;
+  S.pvPart=part;S.pvName=name;S.walkStartDraft=null;
   renderPrevRecord(part,name);
   show('sprev');
 }
 function renderPrevRecord(part,name){
   var pn=parentName(part,name);
   document.getElementById('pv-tt').textContent=dispName(part,pn);
+  if(isWalkingEx(part,pn)){renderPrevCardioRecord(part,pn);return;}
   var body=document.getElementById('pv-body'),acts=document.getElementById('pv-acts'),back=document.getElementById('pv-back');
   var pe=getPrevExerciseEntry(part,pn);
   if(!pe){
@@ -1993,6 +2059,8 @@ function renderPrevRecord(part,name){
 function startFromPreview(){
   var p=S.pvPart,n=S.pvName;
   if(!p||!n){goEx();return;}
+  if(isWalkingEx(p,n))S.walkStartDraft=prevCardioStartDraft(p,n);
+  else S.walkStartDraft=null;
   selEx(p,n);
 }
 
@@ -2048,6 +2116,10 @@ function startWalk(part,name){
   dbg('active session status='+foundStatus);
   if(ei<0){ss[si].exercises.push({part:'有酸素',name:S.ex,parent_name:S.ex,original_name:name,type:'walking',sets:[],cardio:newWalkData(S.ex)});ei=ss[si].exercises.length-1;}
   var ex=ss[si].exercises[ei];ex.type='walking';ex.cardio=normalizeWalkPrep(ex.cardio||newWalkData(S.ex));
+  if(S.walkStartDraft&&!exerciseHasTrainingActivity(ex)){
+    ex.cardio.incline=S.walkStartDraft.incline;ex.cardio.speed=S.walkStartDraft.speed;ex.cardio.targetMin=S.walkStartDraft.targetMin;
+  }
+  S.walkStartDraft=null;
   S.sess=ss[si];S.exE=ex;S.wk=ex.cardio;S.wkSi=si;S.wkEi=ei;S.wkStartMs=S.wk.startTime?(Date.parse(S.wk.startTime)||Date.now()):0;S.wkElapsedAdd=S.wk.duration?S.wk.duration*60:0;S.wkPaused=!S.wk.startTime;S.wkPauseAt=0;
   pS(ss);renderWalk();show('swalk');
   if(S.wkIv){clearInterval(S.wkIv);S.wkIv=null;}
