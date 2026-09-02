@@ -432,6 +432,13 @@ button.sv{appearance:none;-webkit-appearance:none;}
 .log-row.editable{grid-template-columns:54px 1fr auto;align-items:center;gap:8px;}
 .log-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end;}
 .log-actions .mini-btn{min-height:34px;padding:7px 10px;font-size:12px;}
+.interval-sets{margin:12px 16px 0;background:#151A22;border:1px solid var(--line2);border-radius:14px;overflow:hidden;}
+.interval-sets-hd{padding:11px 13px;background:#1E2633;color:var(--text2);font-size:13px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;}
+.interval-set-row{display:grid;grid-template-columns:54px 1fr auto;gap:8px;align-items:center;padding:10px 12px;border-top:1px solid #202938;cursor:pointer;}
+.interval-set-row:first-of-type{border-top:none;}
+.interval-set-row .setno{font-size:13px;font-weight:900;color:var(--text3);}
+.interval-set-row .setdesc{font-size:14px;color:var(--text);font-weight:800;line-height:1.35;}
+.interval-set-row .mini-btn{min-height:34px;padding:7px 10px;font-size:12px;}
 .edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .edit-grid .full{grid-column:1/-1;}
 
@@ -827,7 +834,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="date-bar"><div class="dt" id="h-dt"></div><div class="si" id="h-si"></div></div>
     <div class="summary-card" id="h-sum"></div>
   </div>
-  <div class="app-version">UI v3.19.1 cardio-prev-safe</div>
+  <div class="app-version">UI v3.19.3 training-edit-safe</div>
   <div class="home-elapsed-wrap"><span class="elapsed-chip" data-elapsed-chip="home"></span></div>
   <div class="backup-warn" id="home-backup-warn">バックアップから7日以上経っています</div>
   <div class="scroll"><div class="home-sec">Body Parts</div><div class="parts-stack" id="h-pg"></div></div>
@@ -1078,6 +1085,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <button class="qbtn" onclick="editLastSet()">直前セットを修正</button>
     <button class="qbtn" onclick="deleteLastSet()">直前セットを削除</button>
   </div>
+  <div class="interval-sets" id="interval-sets" style="display:none"></div>
   <div class="t-acts">
     <button class="t-nxt" onclick="nextSet()">次のセットへ →</button>
     <button class="t-end" onclick="endEx()">種目終了</button>
@@ -1163,7 +1171,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="hdr-title">設定</div><div class="hdr-r"></div>
   </div>
   <div class="scroll"><div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
-    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.19.1 cardio-prev-safe</div></div></div>
+    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.19.3 training-edit-safe</div></div></div>
     <div class="panel">
       <div class="panel-h">端末・同期</div>
       <div class="panel-b form-grid">
@@ -1994,6 +2002,12 @@ function cardioStartDraftFromRecord(c){
 function prevCardioStartDraft(part,name){
   var pe=getPrevCardioEntry(part,name);return pe?cardioStartDraftFromRecord(pe.cardio):null;
 }
+function prevRecordRestLabel(sets,idx){
+  if(!sets||idx>=sets.length-1)return '';/*休憩は次セットまでのインターバル。最後のセット後は表示しない*/
+  var rs=parseInt((sets[idx]||{}).rest_seconds,10);
+  if(isNaN(rs)||rs<10)return '';/*1〜9秒などの不自然な実測値は表示だけで吸収する*/
+  return secLbl(rs);
+}
 function renderPrevCardioRecord(part,name){
   var pn=parentName(part,name),body=document.getElementById('pv-body'),acts=document.getElementById('pv-acts'),back=document.getElementById('pv-back'),pe=getPrevCardioEntry(part,pn),def=walkDefaults();
   if(back)back.style.display='';
@@ -2046,11 +2060,11 @@ function renderPrevRecord(part,name){
     body.innerHTML=h;return;
   }
   for(var i=0;i<sets.length;i++){
-    var st=sets[i],rs=Number(st.rest_seconds||0);
+    var st=sets[i],restLabel=prevRecordRestLabel(sets,i);
     h+='<div class="log-row">'
       +'<span style="font-size:14px;font-weight:600;color:var(--text2);">Set'+(st.order||i+1)+'</span>'
       +'<span style="font-size:15px;">'+esc(setDesc(part,st))+'</span>'
-      +'<span style="font-size:13px;color:var(--text2);">休憩 '+(rs>0?esc(secLbl(rs)):'-')+'</span>'
+      +'<span style="font-size:13px;color:var(--text2);">'+(restLabel?'休憩 '+esc(restLabel):'')+'</span>'
       +'</div>';
   }
   h+='</div>';
@@ -2475,10 +2489,11 @@ function renderLog(){
     var st=sets[i],row=document.createElement('div');row.className='log-row editable';
     var memo=(st.variation||st.memo||'標準');
     var plan=(!st.achieved&&st.planned_reps&&st.planned_reps!==st.reps)?' / 予定'+st.planned_reps:'';
+    if(ref)row.onclick=(function(si,ei,ki){return function(){openSetEdit(si,ei,ki,'set');};})(ref.si,ref.ei,i);
     row.innerHTML='<span style="font-size:14px;font-weight:600;color:#555;">Set'+st.order+'</span>'
       +'<span style="font-size:15px;">'+setDesc(S.part,st)+' '+esc(memo)+plan+'</span>'
       +'<span><span style="font-size:16px;color:'+(st.achieved?'#22c55e':'#ef4444')+';">'+(st.achieved?'✓':'✗')+'</span>'
-      +(ref?'<span class="log-actions"><button class="mini-btn" onclick="openSetEdit('+ref.si+','+ref.ei+','+i+',\'set\')">編集</button><button class="mini-btn red" onclick="deleteSetRecord('+ref.si+','+ref.ei+','+i+',\'set\')">削除</button></span>':'')+'</span>';
+      +(ref?'<span class="log-actions"><button class="mini-btn" onclick="event.stopPropagation();openSetEdit('+ref.si+','+ref.ei+','+i+',\'set\')">編集</button><button class="mini-btn red" onclick="event.stopPropagation();deleteSetRecord('+ref.si+','+ref.ei+','+i+',\'set\')">削除</button></span>':'')+'</span>';
     lr.appendChild(row);
   }
 }
@@ -2749,6 +2764,22 @@ function renderStrengthIntervalScreen(savedSet){
   document.getElementById('t-pb').textContent='⏸ 一時停止';
   var ring=document.getElementById('t-ring');if(ring){ring.setAttribute('stroke-dashoffset','0');ring.setAttribute('stroke','url(#tg)');}
   document.getElementById('t-dsp').className='t-time';
+  renderIntervalSetList();
+}
+function renderIntervalSetList(){
+  var box=document.getElementById('interval-sets'),ref=currentExerciseRef(),sets=(S.exE&&S.exE.sets)||[];
+  if(!box)return;
+  if(!ref||!sets.length){box.style.display='none';box.innerHTML='';return;}
+  var h='<div class="interval-sets-hd">完了済みセット（休憩中も修正できます）</div>';
+  for(var i=0;i<sets.length;i++){
+    var st=sets[i],memo=st.variation||st.memo||'標準',plan=(!st.achieved&&st.planned_reps&&st.planned_reps!==st.reps)?' / 予定'+st.planned_reps:'';
+    h+='<div class="interval-set-row" onclick="openSetEdit('+ref.si+','+ref.ei+','+i+',\'interval\')">'
+      +'<div class="setno">Set'+(st.order||i+1)+'</div>'
+      +'<div class="setdesc">'+esc(setDesc(S.part,st))+' '+esc(memo)+esc(plan)+' '+(st.achieved?'✓':'✗')+'</div>'
+      +'<button class="mini-btn" onclick="event.stopPropagation();openSetEdit('+ref.si+','+ref.ei+','+i+',\'interval\')">修正</button>'
+      +'</div>';
+  }
+  box.innerHTML=h;box.style.display='';
 }
 function startStrengthIntervalTimer(){
   dbg('startStrengthIntervalTimer called');
@@ -2967,6 +2998,7 @@ function startInt(){
   if(ds)ds.textContent=setDesc(S.part,last)+' / 次は'+(last.order+1)+'セット目';
   if(sets.length>=2){var pv=sets[sets.length-2];document.getElementById('t-pv').textContent='前回休憩: '+(pv.rest_seconds?pv.rest_seconds+'秒':'-');}
   else document.getElementById('t-pv').textContent='推奨: '+S.tTgt+'秒';
+  renderIntervalSetList();
   renderCoach(last);
   updAutoLbl(false);
   document.getElementById('t-pb').textContent='⏸ 一時停止';
@@ -3276,6 +3308,7 @@ function nc(){
   else if(S.numT==='f'){S.failR=Math.max(1,Math.round(v));syncFailInput();dbg('fail actualReps changed='+S.failR);}
   else{S.r=Math.max(1,Math.round(v));document.getElementById('rv').textContent=S.r;dbg('reps input saved='+S.r);}
   var pc=document.getElementById('prev-compare');if(pc&&S.exE)pc.innerHTML=prevSetCompareHtml(S.part,S.ex,(S.exE.sets||[]).length+1,S.w,S.r);
+  if(activeScreenId()==='si')renderIntervalSetList();
   dbg('number input saved value='+v+' target='+S.numT);
   S.numSaved=true;
   closeNum();
