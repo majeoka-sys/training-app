@@ -434,11 +434,11 @@ button.sv{appearance:none;-webkit-appearance:none;}
 .log-actions .mini-btn{min-height:34px;padding:7px 10px;font-size:12px;}
 .interval-sets{margin:12px 16px 0;background:#151A22;border:1px solid var(--line2);border-radius:14px;overflow:hidden;}
 .interval-sets-hd{padding:11px 13px;background:#1E2633;color:var(--text2);font-size:13px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;}
-.interval-set-row{display:grid;grid-template-columns:54px 1fr auto;gap:8px;align-items:center;padding:10px 12px;border-top:1px solid #202938;cursor:pointer;}
+.interval-set-row{display:grid;grid-template-columns:54px 1fr auto;gap:8px;align-items:center;padding:10px 12px;border-top:1px solid #202938;cursor:pointer;position:relative;z-index:1;pointer-events:auto;touch-action:manipulation;}
 .interval-set-row:first-of-type{border-top:none;}
 .interval-set-row .setno{font-size:13px;font-weight:900;color:var(--text3);}
 .interval-set-row .setdesc{font-size:14px;color:var(--text);font-weight:800;line-height:1.35;}
-.interval-set-row .mini-btn{min-height:34px;padding:7px 10px;font-size:12px;}
+.interval-set-row .mini-btn{min-height:34px;padding:7px 10px;font-size:12px;pointer-events:auto;touch-action:manipulation;}
 .edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .edit-grid .full{grid-column:1/-1;}
 
@@ -834,7 +834,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="date-bar"><div class="dt" id="h-dt"></div><div class="si" id="h-si"></div></div>
     <div class="summary-card" id="h-sum"></div>
   </div>
-  <div class="app-version">UI v3.19.3 training-edit-safe</div>
+  <div class="app-version">UI v3.19.4 interval-edit-timer-safe</div>
   <div class="home-elapsed-wrap"><span class="elapsed-chip" data-elapsed-chip="home"></span></div>
   <div class="backup-warn" id="home-backup-warn">バックアップから7日以上経っています</div>
   <div class="scroll"><div class="home-sec">Body Parts</div><div class="parts-stack" id="h-pg"></div></div>
@@ -1171,7 +1171,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="hdr-title">設定</div><div class="hdr-r"></div>
   </div>
   <div class="scroll"><div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
-    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.19.3 training-edit-safe</div></div></div>
+    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.19.4 interval-edit-timer-safe</div></div></div>
     <div class="panel">
       <div class="panel-h">端末・同期</div>
       <div class="panel-b form-grid">
@@ -1536,7 +1536,7 @@ function silence(){if(!AC)return;try{var b=AC.createBuffer(1,1,22050),s=AC.creat
 // =====================================================
 var S={part:null,ex:null,sess:null,exE:null,
   w:0,r:10,failR:1,vari:'標準',origEx:null,showHidden:false,editPart:null,editName:null,editHidden:false,editPinned:false,
-  tS:0,tTgt:90,tPau:false,tEl:0,tIv:null,tBp:false,tAutoTo:null,tGoTo:null,
+  tS:0,tTgt:90,tPau:false,tEl:0,tIv:null,tBp:false,tAutoTo:null,tGoTo:null,tAutoPending:false,
   intervalCtx:null,
   postStart:0,postIv:null,postElapsed:0,postActive:false,lastPostWait:0,
   strengthDelegateInstalled:false,lastDirectActionAt:0,lastDirectRole:'',strengthActionBusy:false,
@@ -2330,7 +2330,11 @@ function saveWalkDefaults(){
   if(isNaN(inc)||inc<0||inc>25)inc=6.0;if(isNaN(spd)||spd<=0||spd>20)spd=6.3;if(!tm||tm<=0)tm=45;
   c.walk_defaults={incline:parseFloat(inc.toFixed(1)),speed:parseFloat(spd.toFixed(1)),targetMin:tm};pCFG(c);alert('ウォーキング初期値を保存しました');showSet2();
 }
-function closeRec(){document.getElementById('rec-md').classList.remove('on');S.recType=null;S.recRef=null;}
+function closeRec(){
+  var wasInterval=S.recRef&&S.recRef.from==='interval';
+  document.getElementById('rec-md').classList.remove('on');S.recType=null;S.recRef=null;
+  if(activeScreenId()==='si'||wasInterval)ensureIntervalCompletionState('closeRec');
+}
 function openCpEdit(min){
   if(!S.wk)return;
   var cp=getWalkCp(min)||{timeMin:min,heartRate:S.wk.heartRate||'',incline:S.wk.incline,speed:S.wk.speed,memo:''};
@@ -2701,7 +2705,7 @@ function startStrengthIntervalDirect(savedSet){
   if(S.tIv){clearInterval(S.tIv);S.tIv=null;}
   if(S.tAutoTo){clearTimeout(S.tAutoTo);S.tAutoTo=null;}
   hideGoOverlay();
-  S.tS=Date.now();S.tPau=false;S.tEl=0;S.tBp=false;S.tDangerLogged=false;
+  S.tS=Date.now();S.tPau=false;S.tEl=0;S.tBp=false;S.tAutoPending=false;S.tDangerLogged=false;
   resetIntervalScroll();
   tickT();
   S.tIv=setInterval(tickT,500);
@@ -2798,7 +2802,7 @@ function beginIntervalAfterSet(){
   dbg('beginIntervalAfterSet called part='+S.part+' ex='+S.ex+' intervalSeconds='+sec);
   if(isCardioPart(S.part,S.ex)||(S.exE&&(S.exE.type==='walking'||S.exE.cardio))){dbg('skip interval: walking/cardio');return;}
   if(!isStrengthPart(S.part)){dbg('skip interval: not strength part '+S.part);return;}
-  S.tTgt=sec;
+  S.tTgt=sec;S.tAutoPending=false;
   try{startInt();}catch(e){dbg('startInt error: '+e.message);showE((e&&e.stack)||String(e));}
 }
 function saveSet(ach,actualReps){
@@ -2988,7 +2992,7 @@ function startInt(){
   var sets=S.exE.sets||[],last=sets[sets.length-1];
   if(!last){dbg('startInt stop: last set missing');return;}
   prepareNextDraft(last);
-  S.tTgt=nextRestSec(S.part,S.ex,last.order||((sets.length)||1));dbg('interval seconds='+S.tTgt);S.tS=Date.now();S.tPau=false;S.tEl=0;S.tBp=false;S.tDangerLogged=false;if(S.tAutoTo){clearTimeout(S.tAutoTo);S.tAutoTo=null;}
+  S.tTgt=nextRestSec(S.part,S.ex,last.order||((sets.length)||1));dbg('interval seconds='+S.tTgt);S.tS=Date.now();S.tPau=false;S.tEl=0;S.tBp=false;S.tAutoPending=false;S.tDangerLogged=false;if(S.tAutoTo){clearTimeout(S.tAutoTo);S.tAutoTo=null;}
   hideGoOverlay();
   resetIntervalScroll();
   document.getElementById('i-nm').textContent=dispName(S.part,S.ex);
@@ -3052,10 +3056,39 @@ function finishInterval(){
   dbg('interval countdown reached zero');
   updAutoLbl(true);
   if(S.tIv){clearInterval(S.tIv);S.tIv=null;}
-  if(isAutoNext()&&!S.tAutoTo)S.tAutoTo=setTimeout(function(){S.tAutoTo=null;if(anyModalOpen()){dbg('auto next skipped: modal open');return;}dbg('calling goNextStrengthSetAfterInterval');goNextStrengthSetAfterInterval(true);},500);
+  scheduleIntervalAutoNext('finishInterval');
+}
+function paintIntervalDone(){
+  var td=document.getElementById('t-dsp'),chip=document.getElementById('t-chip'),ring=document.getElementById('t-ring');
+  if(td){td.textContent='00:00';td.className='t-time done';}
+  if(chip){chip.textContent='00:00';chip.className='t-chip done';}
+  if(ring){ring.setAttribute('stroke-dashoffset','628.318');ring.setAttribute('stroke','url(#tg-done)');}
+  updAutoLbl(true);
+}
+function scheduleIntervalAutoNext(reason){
+  if(!isAutoNext()){S.tAutoPending=false;return;}
+  if(anyModalOpen()){S.tAutoPending=true;dbg('auto next pending: modal open '+(reason||''));return;}
+  if(S.tAutoTo)return;
+  S.tAutoPending=false;
+  S.tAutoTo=setTimeout(function(){
+    S.tAutoTo=null;
+    if(anyModalOpen()){S.tAutoPending=true;dbg('auto next pending at timeout: modal open');return;}
+    dbg('calling goNextStrengthSetAfterInterval reason='+(reason||''));
+    goNextStrengthSetAfterInterval(true);
+  },500);
+}
+function ensureIntervalCompletionState(reason){
+  if(activeScreenId()!=='si'||!S.tTgt)return;
+  var expired=getEl()>=S.tTgt;
+  if(expired){
+    if(S.tIv){clearInterval(S.tIv);S.tIv=null;}
+    S.tBp=true;paintIntervalDone();scheduleIntervalAutoNext(reason||'ensure');
+  }else if(!S.tIv&&!S.tPau&&!S.tBp){
+    S.tIv=setInterval(tickT,500);
+  }
 }
 function adjT(d){
-  if(S.tAutoTo){clearTimeout(S.tAutoTo);S.tAutoTo=null;}
+  if(S.tAutoTo){clearTimeout(S.tAutoTo);S.tAutoTo=null;}S.tAutoPending=false;
   hideGoOverlay();
   var el=getEl(),nt;
   if(d>0)nt=Math.max(S.tTgt+d,el+d);
@@ -3083,6 +3116,7 @@ function saveRest(){
 function stopTimer(){
   if(S.tIv){clearInterval(S.tIv);S.tIv=null;}
   if(S.tAutoTo){clearTimeout(S.tAutoTo);S.tAutoTo=null;}
+  S.tAutoPending=false;
   hideGoOverlay();
 }
 function showGoOverlay(cb){
@@ -3100,6 +3134,7 @@ function hideGoOverlay(){
 function stopStrengthIntervalTimer(){stopTimer();}
 function goNextStrengthSetAfterInterval(auto){
   dbg('goNextStrengthSetAfterInterval called');
+  S.tAutoPending=false;
   try{saveRest();}catch(e){dbg('saveRest before next error: '+e.message);}
   if(S.tIv){clearInterval(S.tIv);S.tIv=null;}
   if(S.tAutoTo){clearTimeout(S.tAutoTo);S.tAutoTo=null;}
@@ -3146,6 +3181,7 @@ function returnToInterval(si,ei){
   if(!S.tIv&&!S.tPau&&!S.tBp)S.tIv=setInterval(tickT,500);
   tickT();
   if(S.tBp)updAutoLbl(true);
+  ensureIntervalCompletionState('returnToInterval');
   dbg('returned to interval after record mutation');
 }
 function returnToSetAfterIntervalDelete(si,ei){
@@ -3297,7 +3333,7 @@ function openNum(t){
   dbg('number modal zIndex='+(getComputedStyle(n).zIndex||n.style.zIndex));
   dbg('number modal attachedTo='+(n.parentNode===document.body?'body':'other'));
 }
-function closeNum(){var n=document.getElementById('nm');n.classList.remove('on');n.style.display='none';n.style.visibility='hidden';n.style.opacity='0';n.style.pointerEvents='none';if(!S.numSaved)dbg('number input canceled');S.numSaved=false;}
+function closeNum(){var n=document.getElementById('nm');n.classList.remove('on');n.style.display='none';n.style.visibility='hidden';n.style.opacity='0';n.style.pointerEvents='none';if(!S.numSaved)dbg('number input canceled');S.numSaved=false;if(activeScreenId()==='si')ensureIntervalCompletionState('closeNum');}
 function ni(c){if(c==='.'&&S.numStr.includes('.'))return;S.numStr=(S.numStr==='0'&&c!=='.')?c:S.numStr+c;if(S.numStr.length>6)S.numStr=S.numStr.slice(0,-1);document.getElementById('nm-dsp').textContent=S.numStr||'0';}
 function nd(){S.numStr=S.numStr.slice(0,-1)||'0';document.getElementById('nm-dsp').textContent=S.numStr;}
 function nc(){
