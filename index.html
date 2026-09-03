@@ -834,7 +834,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="date-bar"><div class="dt" id="h-dt"></div><div class="si" id="h-si"></div></div>
     <div class="summary-card" id="h-sum"></div>
   </div>
-  <div class="app-version">UI v3.19.4 interval-edit-timer-safe</div>
+  <div class="app-version">UI v3.19.5 interval-edit-button-safe</div>
   <div class="home-elapsed-wrap"><span class="elapsed-chip" data-elapsed-chip="home"></span></div>
   <div class="backup-warn" id="home-backup-warn">バックアップから7日以上経っています</div>
   <div class="scroll"><div class="home-sec">Body Parts</div><div class="parts-stack" id="h-pg"></div></div>
@@ -1171,7 +1171,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="hdr-title">設定</div><div class="hdr-r"></div>
   </div>
   <div class="scroll"><div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
-    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.19.4 interval-edit-timer-safe</div></div></div>
+    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.19.5 interval-edit-button-safe</div></div></div>
     <div class="panel">
       <div class="panel-h">端末・同期</div>
       <div class="panel-b form-grid">
@@ -2774,16 +2774,30 @@ function renderIntervalSetList(){
   var box=document.getElementById('interval-sets'),ref=currentExerciseRef(),sets=(S.exE&&S.exE.sets)||[];
   if(!box)return;
   if(!ref||!sets.length){box.style.display='none';box.innerHTML='';return;}
-  var h='<div class="interval-sets-hd">完了済みセット（休憩中も修正できます）</div>';
+  box.innerHTML='';
+  var hd=document.createElement('div');
+  hd.className='interval-sets-hd';
+  hd.textContent='完了済みセット（休憩中も修正できます）';
+  box.appendChild(hd);
   for(var i=0;i<sets.length;i++){
     var st=sets[i],memo=st.variation||st.memo||'標準',plan=(!st.achieved&&st.planned_reps&&st.planned_reps!==st.reps)?' / 予定'+st.planned_reps:'';
-    h+='<div class="interval-set-row" onclick="openSetEdit('+ref.si+','+ref.ei+','+i+',\'interval\')">'
-      +'<div class="setno">Set'+(st.order||i+1)+'</div>'
-      +'<div class="setdesc">'+esc(setDesc(S.part,st))+' '+esc(memo)+esc(plan)+' '+(st.achieved?'✓':'✗')+'</div>'
-      +'<button class="mini-btn" onclick="event.stopPropagation();openSetEdit('+ref.si+','+ref.ei+','+i+',\'interval\')">修正</button>'
-      +'</div>';
+    var row=document.createElement('div'),no=document.createElement('div'),desc=document.createElement('div'),btn=document.createElement('button');
+    row.className='interval-set-row';
+    row.setAttribute('role','button');
+    row.setAttribute('tabindex','0');
+    no.className='setno';
+    no.textContent='Set'+(st.order||i+1);
+    desc.className='setdesc';
+    desc.textContent=setDesc(S.part,st)+' '+memo+plan+' '+(st.achieved?'✓':'✗');
+    btn.className='mini-btn';
+    btn.type='button';
+    btn.textContent='修正';
+    row.onclick=(function(si,ei,ki){return function(e){if(e&&e.target&&e.target.tagName==='BUTTON')return;openSetEdit(si,ei,ki,'interval');};})(ref.si,ref.ei,i);
+    row.onkeydown=(function(si,ei,ki){return function(e){if(e&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openSetEdit(si,ei,ki,'interval');}};})(ref.si,ref.ei,i);
+    btn.onclick=(function(si,ei,ki){return function(e){if(e){if(e.preventDefault)e.preventDefault();if(e.stopPropagation)e.stopPropagation();}openSetEdit(si,ei,ki,'interval');};})(ref.si,ref.ei,i);
+    row.appendChild(no);row.appendChild(desc);row.appendChild(btn);box.appendChild(row);
   }
-  box.innerHTML=h;box.style.display='';
+  box.style.display='';
 }
 function startStrengthIntervalTimer(){
   dbg('startStrengthIntervalTimer called');
