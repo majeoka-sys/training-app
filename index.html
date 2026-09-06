@@ -834,7 +834,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="date-bar"><div class="dt" id="h-dt"></div><div class="si" id="h-si"></div></div>
     <div class="summary-card" id="h-sum"></div>
   </div>
-  <div class="app-version">UI v3.19.5 interval-edit-button-safe</div>
+  <div class="app-version">UI v3.19.6 rest-guard</div>
   <div class="home-elapsed-wrap"><span class="elapsed-chip" data-elapsed-chip="home"></span></div>
   <div class="backup-warn" id="home-backup-warn">バックアップから7日以上経っています</div>
   <div class="scroll"><div class="home-sec">Body Parts</div><div class="parts-stack" id="h-pg"></div></div>
@@ -1171,7 +1171,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="hdr-title">設定</div><div class="hdr-r"></div>
   </div>
   <div class="scroll"><div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
-    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.19.5 interval-edit-button-safe</div></div></div>
+    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.19.6 rest-guard</div></div></div>
     <div class="panel">
       <div class="panel-h">端末・同期</div>
       <div class="panel-b form-grid">
@@ -1951,8 +1951,15 @@ function prevSetForOrder(part,name,order){
 /* 第orderセット後の休憩秒数。前回の実測(rest_seconds)を最優先し、
    無ければ既存の getIntFor（種目設定 em → 既定 ip → マスタ → 90秒）へフォールバック。 */
 function restSecForOrder(part,name,order){
+  var pe=getPrevExerciseEntry(part,parentName(part,name));
+  var prevCount=pe?expandPrevSets(pe.ex).length:0;
+  /* 今回のセット数が前回より多い分は、前回「最終セットの後の休憩」を引き継がない。
+     最終セット後は休憩せず終える場合が多く、次回の参考にならないため。 */
+  if(prevCount>0&&(parseInt(order,10)||1)>prevCount)return getIntFor(part,name);
   var st=prevSetForOrder(part,name,order),rs=st?parseInt(st.rest_seconds,10):0;
-  if(rs>0)return rs;
+  /* 既存データに残る極端に短い値は書き換えず、読むときに無視する */
+  if(rs>=REST_MIN_SEC&&rs<=REST_MAX_SEC)return rs;
+  if(rs>0)dbg('rest_seconds ignored on read: '+rs+'s (order='+order+')');
   return getIntFor(part,name);
 }
 /* 今回ユーザーが手で変えた休憩秒数があればそれを優先する（初期値は編集可能） */
@@ -2005,7 +2012,7 @@ function prevCardioStartDraft(part,name){
 function prevRecordRestLabel(sets,idx){
   if(!sets||idx>=sets.length-1)return '';/*休憩は次セットまでのインターバル。最後のセット後は表示しない*/
   var rs=parseInt((sets[idx]||{}).rest_seconds,10);
-  if(isNaN(rs)||rs<10)return '';/*1〜9秒などの不自然な実測値は表示だけで吸収する*/
+  if(isNaN(rs)||rs<REST_MIN_SEC)return '';/*不自然に短い実測値は表示しない（保存・参照の下限と揃える）*/
   return secLbl(rs);
 }
 function renderPrevCardioRecord(part,name){
@@ -3117,13 +3124,15 @@ function togP(){
   else{S.tEl=getEl();S.tPau=true;document.getElementById('t-pb').textContent='▶ 再開';}
 }
 var REST_MAX_SEC=600;/*10分超の休憩は放置とみなし実測値として保存しない*/
-function saveRest(){
+var REST_MIN_SEC=15;/*15秒未満は休憩していないとみなし実測値として保存も参照もしない*/
+function saveRest(skipRest){/*skipRest=true なら休憩秒数は保存せず、インターバル設定の保存だけ行う*/
   var el=getEl(),ss=gS(),td=toDay(),si=-1;for(var i=0;i<ss.length;i++)if(ss[i].date===td){si=i;break;}if(si<0)return;
   var ei=-1;for(var i=0;i<(ss[si].exercises||[]).length;i++){var ex0=ss[si].exercises[i];if(ex0.part===S.part&&(ex0.name===S.ex||ex0.parent_name===S.ex)){ei=i;break;}}if(ei<0)return;
   var sets=ss[si].exercises[ei].sets;
   if(sets.length>0){
-    if(el>0&&el<=REST_MAX_SEC)sets[sets.length-1].rest_seconds=el;
-    else dbg('rest_seconds skipped el='+el+' limit='+REST_MAX_SEC);
+    if(skipRest)dbg('rest_seconds skipped: 休憩を完了せず離脱した経路');
+    else if(el>=REST_MIN_SEC&&el<=REST_MAX_SEC)sets[sets.length-1].rest_seconds=el;
+    else dbg('rest_seconds skipped el='+el+' range='+REST_MIN_SEC+'-'+REST_MAX_SEC);
   }
   var ip=gIP();ip[S.ex]=S.tTgt;pIP(ip);setPref(S.part,S.ex,{interval:S.tTgt});pS(ss);S.exE=ss[si].exercises[ei];
 }
@@ -3210,11 +3219,11 @@ function returnToSetAfterIntervalDelete(si,ei){
   showToast('直前セットを削除したため、セット入力画面に戻りました','info');
 }
 function endEx(){
-  saveRest();stopTimer();S.nextDraft=null;if(S.postActive)stopPostIntervalStopwatch();
+  saveRest(true);stopTimer();S.nextDraft=null;if(S.postActive)stopPostIntervalStopwatch();
   show('send');
 }
-function addSamePart(){if(S.tIv||S.tAutoTo){saveRest();stopTimer();}S.nextDraft=null;if(S.postActive)stopPostIntervalStopwatch();if(S.part){renderExList(S.part);show('sex');}else goHome();}
-function addOtherPart(){if(S.tIv||S.tAutoTo){saveRest();stopTimer();}S.nextDraft=null;if(S.postActive)stopPostIntervalStopwatch();goHome();}
+function addSamePart(){if(S.tIv||S.tAutoTo){saveRest(true);stopTimer();}S.nextDraft=null;if(S.postActive)stopPostIntervalStopwatch();if(S.part){renderExList(S.part);show('sex');}else goHome();}
+function addOtherPart(){if(S.tIv||S.tAutoTo){saveRest(true);stopTimer();}S.nextDraft=null;if(S.postActive)stopPostIntervalStopwatch();goHome();}
 function finishTraining(){var ss=gS(),td=toDay();for(var i=0;i<ss.length;i++)if(ss[i].date===td){ss[i].ended_at=new Date().toISOString();break;}pS(ss);goHome();}
 function markTodayEnded(){var ss=gS(),td=toDay();for(var i=0;i<ss.length;i++)if(ss[i].date===td){ss[i].ended_at=new Date().toISOString();break;}pS(ss);}
 function dailyMemo(date){date=date||toDay();var c=gCFG(),m=c.daily_memos||{},v=m[date];return typeof v==='object'?(v.memo||''):(v||'');}
