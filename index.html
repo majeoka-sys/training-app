@@ -834,7 +834,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="date-bar"><div class="dt" id="h-dt"></div><div class="si" id="h-si"></div></div>
     <div class="summary-card" id="h-sum"></div>
   </div>
-  <div class="app-version">UI v3.19.6 rest-guard</div>
+  <div class="app-version">UI v3.20.0 interval-sticky</div>
   <div class="home-elapsed-wrap"><span class="elapsed-chip" data-elapsed-chip="home"></span></div>
   <div class="backup-warn" id="home-backup-warn">バックアップから7日以上経っています</div>
   <div class="scroll"><div class="home-sec">Body Parts</div><div class="parts-stack" id="h-pg"></div></div>
@@ -976,7 +976,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     </div>
     <div class="rest-card" id="set-rest-card">
       <div class="rest-label">インターバル</div><div class="rest-value" id="set-rest-val">90秒</div>
-      <div class="rest-buttons"><button onclick="adjSetRest(-30)">-30秒</button><button onclick="adjSetRest(-10)">-10秒</button><button onclick="adjSetRest(10)">+10秒</button><button onclick="adjSetRest(30)">+30秒</button></div>
+      <div class="rest-buttons"><button onclick="adjSetRest(-30)">-30秒</button><button onclick="adjSetRest(-5)">-5秒</button><button onclick="adjSetRest(5)">+5秒</button><button onclick="adjSetRest(30)">+30秒</button></div>
     </div>
     <div class="post-wait" id="post-wait"><div class="post-wait-lbl">休憩終了後</div><div class="post-wait-time">0:00</div></div>
     <div class="prev-compare" id="prev-compare">前回同種目: -</div>
@@ -1081,6 +1081,10 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <button class="tbtn dk" id="t-pb" onclick="togP()">⏸ 一時停止</button>
     <button class="tbtn dk" onclick="adjT(30)">+30秒</button>
   </div>
+  <div class="t-ctrl">
+    <button class="tbtn dk" onclick="adjT(-5)">−5秒</button>
+    <button class="tbtn dk" onclick="adjT(5)">+5秒</button>
+  </div>
   <div class="t-more">
     <button class="qbtn" onclick="editLastSet()">直前セットを修正</button>
     <button class="qbtn" onclick="deleteLastSet()">直前セットを削除</button>
@@ -1171,7 +1175,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="hdr-title">設定</div><div class="hdr-r"></div>
   </div>
   <div class="scroll"><div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
-    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.19.6 rest-guard</div></div></div>
+    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.20.0 interval-sticky</div></div></div>
     <div class="panel">
       <div class="panel-h">端末・同期</div>
       <div class="panel-b form-grid">
@@ -1388,6 +1392,12 @@ function getSMax(part,name){var max=0,ss=gS();for(var i=0;i<ss.length;i++){var s
 function isStrengthPart(part){return STRENGTH_PARTS.indexOf(part)>=0;}
 function isCardioPart(part,exercise){return part==='有酸素'||String(exercise||'').indexOf('ウォーキング')>=0;}
 function safeSeconds(sec){sec=parseInt(sec,10);return(!sec||isNaN(sec)||sec<=0)?90:sec;}
+var INTERVAL_STEP_SEC=30;/*インターバル設定値は30秒刻みに揃える*/
+function roundInterval(sec){/*設定値を30秒単位に丸める。実行中の残り秒数には使わない*/
+  sec=parseInt(sec,10);if(!sec||isNaN(sec)||sec<=0)return 90;
+  var r=Math.round(sec/INTERVAL_STEP_SEC)*INTERVAL_STEP_SEC;
+  return r<INTERVAL_STEP_SEC?INTERVAL_STEP_SEC:r;
+}
 function getIntD(name){return getSafeIntervalSeconds(S.part,name);}
 function getIntFor(part,name){var pr=getPref(part,name),v=parseInt(pr.interval,10);if(v>0)return v;var p=gIP();v=parseInt(p[name],10);if(v>0)return v;var names=aliasesFor(part,name);for(var i=0;i<names.length;i++){var m=getME(part,names[i]);if(m&&m.typical_interval_min){v=Math.round(parseFloat(m.typical_interval_min)*60);if(v>0)return v;}}return 90;}
 function getSafeIntervalSeconds(part,name){return safeSeconds(getIntFor(part,name));}
@@ -1543,7 +1553,8 @@ var S={part:null,ex:null,sess:null,exE:null,
   wk:null,wkIv:null,wkStartMs:0,wkElapsedAdd:0,wkPaused:false,wkPauseAt:0,wkSi:-1,wkEi:-1,
   recType:null,recRef:null,histPart:null,histEx:null,histDate:null,histMonth:null,globalElapsedIv:null,nextDraft:null,
   numT:null,numStr:'0',
-  pvPart:null,pvName:null,restOvr:null,walkStartDraft:null};
+  pvPart:null,pvName:null,restOvr:null,walkStartDraft:null,
+  dayInterval:null};/*その日その種目で確定したインターバル設定値。日付が変わると破棄する*/
 
 // =====================================================
 // SCREEN
@@ -1873,7 +1884,7 @@ function saveCustomExercise(){
   var w=numOr(document.getElementById('ax-w').value,0);
   var r=Math.max(1,intOr(document.getElementById('ax-r').value,10));
   var step=numOr(document.getElementById('ax-step').value,0);
-  var iv=safeSeconds(intOr(document.getElementById('ax-i').value,90));
+  var iv=roundInterval(intOr(document.getElementById('ax-i').value,90));/*設定値は30秒単位*/
   var ord=intOr(document.getElementById('ax-o').value,0);
   var vars=parseVarsInput(document.getElementById('ax-vars').value);
   if(vars.length&&vars.indexOf('標準')<0)vars.unshift('標準');
@@ -1962,11 +1973,34 @@ function restSecForOrder(part,name,order){
   if(rs>0)dbg('rest_seconds ignored on read: '+rs+'s (order='+order+')');
   return getIntFor(part,name);
 }
-/* 今回ユーザーが手で変えた休憩秒数があればそれを優先する（初期値は編集可能） */
+/* 1セット目の初期値。前回その種目で使っていた「設定値」(em)から引く。
+   前回の実測 rest_seconds は初期値には使わない（表示にのみ使う）。
+   em → ip → マスタ標準値 → 90秒 の順にフォールバックし、30秒単位に丸める。 */
+function firstSetIntervalSec(part,name){
+  return roundInterval(getIntFor(part,name));
+}
+/* その日その種目で確定しているインターバル設定値を返す。無ければ null */
+function getDayInterval(part,name){
+  var d=S.dayInterval;
+  if(!d)return null;
+  if(d.date!==toDay()){S.dayInterval=null;return null;}/*日付が変わったら破棄*/
+  if(d.part!==part||d.name!==name)return null;/*種目が変われば引き継がない*/
+  return roundInterval(d.sec);
+}
+/* その日その種目のインターバル設定値を確定・更新する。以降のセットに引き継がれる */
+function setDayInterval(part,name,sec){
+  S.dayInterval={date:toDay(),part:part,name:name,sec:roundInterval(sec)};
+  dbg('dayInterval set '+part+'/'+name+'='+S.dayInterval.sec+'s');
+  return S.dayInterval.sec;
+}
+/* 何セット目でも「その日の値」を使う。まだ確定していなければ1セット目の初期値を確定させる。
+   セット数に上限は設けない（6セット目でも10セット目でも同じ値）。 */
 function nextRestSec(part,name,order){
   var o=S.restOvr;
-  if(o&&o.part===part&&o.name===name&&o.order===(parseInt(order,10)||1))return safeSeconds(o.sec);
-  return safeSeconds(restSecForOrder(part,name,order));
+  if(o&&o.part===part&&o.name===name)return roundInterval(o.sec);/*手動変更は以降ずっと優先*/
+  var d=getDayInterval(part,name);
+  if(d)return d;
+  return setDayInterval(part,name,firstSetIntervalSec(part,name));
 }
 function cardioExerciseMatches(ex,part,name){
   if(!ex||!(ex.part==='有酸素'||ex.type==='walking'||ex.cardio))return false;
@@ -2441,7 +2475,7 @@ function deleteWalkRecord(si,ei,from){
 // =====================================================
 function isWalkingEx(part,name){var n=String(name||'');return part==='有酸素'||n.indexOf('ウォーキング')>=0||n.indexOf('トレッドミル')>=0||n.indexOf('有酸素')>=0;}
 function selEx(part,name){
-  S.nextDraft=null;S.restOvr=null;/*種目を選び直したら手動の休憩変更はリセット*/
+  S.nextDraft=null;S.restOvr=null;S.dayInterval=null;/*種目を選び直したら手動の休憩変更とその日の値はリセット*/
   if(isWalkingEx(part,name)){startWalk(part,name);return;}
   if(S.postActive)stopPostIntervalStopwatch();
   S.part=part;S.ex=parentName(part,name);S.origEx=name;
@@ -2528,8 +2562,9 @@ function bindSetNumberInputs(){
 }
 function adjSetRest(d){
   var ord=(S.exE&&S.exE.sets?S.exE.sets.length:0)+1;
-  var sec=Math.max(30,nextRestSec(S.part,S.ex,ord)+d);
-  S.restOvr={part:S.part,name:S.ex,order:ord,sec:sec};/*手動変更を今回分として優先*/
+  var sec=roundInterval(Math.max(INTERVAL_STEP_SEC,nextRestSec(S.part,S.ex,ord)+d));
+  S.restOvr={part:S.part,name:S.ex,order:ord,sec:sec};/*手動変更は以降のセットにも引き継ぐ*/
+  setDayInterval(S.part,S.ex,sec);
   var ip=gIP();ip[S.ex]=sec;pIP(ip);setPref(S.part,S.ex,{interval:sec});
   var rv=document.getElementById('set-rest-val');if(rv)rv.textContent=secLbl(sec);
   var si=document.getElementById('s-int');if(si)si.textContent=secLbl(sec);
@@ -3114,7 +3149,15 @@ function adjT(d){
   var el=getEl(),nt;
   if(d>0)nt=Math.max(S.tTgt+d,el+d);
   else nt=Math.max(5,el,S.tTgt+d);
-  S.tTgt=Math.ceil(nt/10)*10;/*10秒単位に揃えて綺麗な時間にする(タイマー終了後の調整で時間がズレるのを防止)*/
+  /* ±30秒は設定値として30秒単位に丸め、その日の値として以降のセットへ引き継ぐ。
+     ±5秒はその場の微調整なので丸めず、引き継ぎもしない。 */
+  if(Math.abs(d)>=INTERVAL_STEP_SEC){
+    S.tTgt=roundInterval(nt);
+    S.restOvr={part:S.part,name:S.ex,order:0,sec:S.tTgt};
+    setDayInterval(S.part,S.ex,S.tTgt);
+  }else{
+    S.tTgt=Math.max(5,Math.round(nt));
+  }
   S.tBp=false;updAutoLbl(false);
   if(!S.tIv&&!S.tPau)S.tIv=setInterval(tickT,500);
   tickT();
@@ -3463,7 +3506,7 @@ function saveEdit(){
   var p={std_w:numOr(document.getElementById('ed-w').value,0),
     std_r:Math.max(1,intOr(document.getElementById('ed-r').value,10)),
     weight_step:numOr(document.getElementById('ed-step').value,0)||getWeightStep(part,name),
-    interval:safeSeconds(intOr(document.getElementById('ed-i').value,90)),
+    interval:roundInterval(intOr(document.getElementById('ed-i').value,90)),/*設定値は30秒単位*/
     order:intOr(document.getElementById('ed-o').value,0),
     hidden:S.editHidden,pinned:S.editPinned};
   var vars=parseVarsInput(document.getElementById('ed-vars').value);
