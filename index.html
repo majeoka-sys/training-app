@@ -834,7 +834,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="date-bar"><div class="dt" id="h-dt"></div><div class="si" id="h-si"></div></div>
     <div class="summary-card" id="h-sum"></div>
   </div>
-  <div class="app-version">UI v3.20.0 interval-sticky</div>
+  <div class="app-version">UI v3.20.1 interval-init-fix</div>
   <div class="home-elapsed-wrap"><span class="elapsed-chip" data-elapsed-chip="home"></span></div>
   <div class="backup-warn" id="home-backup-warn">バックアップから7日以上経っています</div>
   <div class="scroll"><div class="home-sec">Body Parts</div><div class="parts-stack" id="h-pg"></div></div>
@@ -1175,7 +1175,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="hdr-title">設定</div><div class="hdr-r"></div>
   </div>
   <div class="scroll"><div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
-    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.20.0 interval-sticky</div></div></div>
+    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.20.1 interval-init-fix</div></div></div>
     <div class="panel">
       <div class="panel-h">端末・同期</div>
       <div class="panel-b form-grid">
@@ -1399,7 +1399,15 @@ function roundInterval(sec){/*設定値を30秒単位に丸める。実行中の
   return r<INTERVAL_STEP_SEC?INTERVAL_STEP_SEC:r;
 }
 function getIntD(name){return getSafeIntervalSeconds(S.part,name);}
-function getIntFor(part,name){var pr=getPref(part,name),v=parseInt(pr.interval,10);if(v>0)return v;var p=gIP();v=parseInt(p[name],10);if(v>0)return v;var names=aliasesFor(part,name);for(var i=0;i<names.length;i++){var m=getME(part,names[i]);if(m&&m.typical_interval_min){v=Math.round(parseFloat(m.typical_interval_min)*60);if(v>0)return v;}}return 90;}
+/* 設定値として妥当かどうか。v3.19.6以前は saveRest() が実測の休憩秒数を設定値として
+   保存していたため、em/ip に 20秒・35秒 のような値が残っている端末がある。
+   設定値は必ず30秒の倍数（ボタン・入力欄とも30秒刻み）なので、倍数でない値は
+   当時の実測値の残骸とみなして採用しない。データは書き換えず読み時に無視する。 */
+function isValidIntervalPref(v){
+  v=parseInt(v,10);
+  return !(!v||isNaN(v)||v<=0)&&v%INTERVAL_STEP_SEC===0;
+}
+function getIntFor(part,name){var pr=getPref(part,name),v=parseInt(pr.interval,10);if(isValidIntervalPref(v))return v;if(v>0)dbg('em interval ignored (not a '+INTERVAL_STEP_SEC+'s multiple): '+v);var p=gIP();v=parseInt(p[name],10);if(isValidIntervalPref(v))return v;if(v>0)dbg('ip interval ignored (not a '+INTERVAL_STEP_SEC+'s multiple): '+v);var names=aliasesFor(part,name);for(var i=0;i<names.length;i++){var m=getME(part,names[i]);if(m&&m.typical_interval_min){v=Math.round(parseFloat(m.typical_interval_min)*60);if(v>0)return v;}}return 90;}
 function getSafeIntervalSeconds(part,name){return safeSeconds(getIntFor(part,name));}
 function secLbl(sec){sec=safeSeconds(sec);if(sec<60)return sec+'秒';var m=Math.floor(sec/60),s=sec%60;return s?m+'分'+s+'秒':m+'分';}
 function getWeightStep(part,name){
@@ -3177,7 +3185,9 @@ function saveRest(skipRest){/*skipRest=true なら休憩秒数は保存せず、
     else if(el>=REST_MIN_SEC&&el<=REST_MAX_SEC)sets[sets.length-1].rest_seconds=el;
     else dbg('rest_seconds skipped el='+el+' range='+REST_MIN_SEC+'-'+REST_MAX_SEC);
   }
-  var ip=gIP();ip[S.ex]=S.tTgt;pIP(ip);setPref(S.part,S.ex,{interval:S.tTgt});pS(ss);S.exE=ss[si].exercises[ei];
+  /* 設定値として保存するのは30秒に丸めた値だけ。±5秒の微調整が恒久的な設定値に漏れないようにする */
+  var pv=roundInterval(S.tTgt);
+  var ip=gIP();ip[S.ex]=pv;pIP(ip);setPref(S.part,S.ex,{interval:pv});pS(ss);S.exE=ss[si].exercises[ei];
 }
 function stopTimer(){
   if(S.tIv){clearInterval(S.tIv);S.tIv=null;}
