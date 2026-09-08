@@ -834,7 +834,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="date-bar"><div class="dt" id="h-dt"></div><div class="si" id="h-si"></div></div>
     <div class="summary-card" id="h-sum"></div>
   </div>
-  <div class="app-version">UI v3.20.1 interval-init-fix</div>
+  <div class="app-version">UI v3.21.0 storage-guard</div>
   <div class="home-elapsed-wrap"><span class="elapsed-chip" data-elapsed-chip="home"></span></div>
   <div class="backup-warn" id="home-backup-warn">バックアップから7日以上経っています</div>
   <div class="scroll"><div class="home-sec">Body Parts</div><div class="parts-stack" id="h-pg"></div></div>
@@ -1175,7 +1175,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="hdr-title">設定</div><div class="hdr-r"></div>
   </div>
   <div class="scroll"><div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
-    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.20.1 interval-init-fix</div></div></div>
+    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.21.0 storage-guard</div></div></div>
     <div class="panel">
       <div class="panel-h">端末・同期</div>
       <div class="panel-b form-grid">
@@ -1279,18 +1279,81 @@ function showToast(msg,type){
 // =====================================================
 // STORAGE
 // =====================================================
-function gS(){try{var d=localStorage.getItem('ts');return d?JSON.parse(d):[];}catch(e){return[];}}
-function pS(a){try{localStorage.setItem('ts',JSON.stringify(a));}catch(e){}}
+/* ===== localStorage 健全性ラッパー（保存キー名・保存データ形式は変更しない） ===== */
+var LS_STATE={};   /* key -> 'ok' | 'empty' | 'bad' 。未評価は undefined。メモリのみ */
+var LS_WARNED={};  /* key -> true 。読込異常の通知済み。再帰の停止条件を兼ねる */
+var LS_NOTIFY=0;   /* 通知中の深度ガード */
+function lsExpectArray(key){return key==='ts';}
+function lsOkType(key,v){
+  if(lsExpectArray(key))return Array.isArray(v);
+  return !!v&&typeof v==='object'&&!Array.isArray(v);
+}
+/* 読み取りのみ。localStorage へは書かない */
+function lsClassify(key){
+  var raw;
+  try{raw=localStorage.getItem(key);}catch(e){return 'bad';}
+  if(raw===null||raw==='')return 'empty';
+  var v;try{v=JSON.parse(raw);}catch(e){return 'bad';}
+  return lsOkType(key,v)?'ok':'bad';
+}
+function lsEnsureState(key){
+  if(LS_STATE[key]===undefined)LS_STATE[key]=lsClassify(key);
+  return LS_STATE[key];
+}
+/* 読込異常の通知。1セッション1キー1回。WARNED を通知前に立てるのが再帰の停止条件 */
+function lsBadWarn(key){
+  if(LS_WARNED[key])return;
+  LS_WARNED[key]=true;
+  dbg('storage read broken key='+key);
+  if(LS_NOTIFY)return;
+  LS_NOTIFY=1;
+  try{alert('保存データ（'+key+'）が読み取れませんでした。\nこのデータは消さずにそのまま残しています。\n安全のため、この項目への保存を停止します。');}catch(e){}
+  LS_NOTIFY=0;
+}
+function lsFailNotify(key,why){
+  dbg('storage write failed key='+key+' reason='+why);
+  if(LS_NOTIFY)return;
+  LS_NOTIFY=1;
+  try{showToast('保存できませんでした（'+key+'）。端末の空き容量を確認してください','info');}catch(e){}
+  LS_NOTIFY=0;
+}
+/* JSON.parse は1回だけ。現行 gS と同じ読取コスト */
+function lsGet(key,fallback){
+  var raw;
+  try{raw=localStorage.getItem(key);}
+  catch(e){LS_STATE[key]='bad';lsBadWarn(key);return fallback;}
+  if(raw===null||raw===''){LS_STATE[key]='empty';return fallback;}
+  var v;
+  try{v=JSON.parse(raw);}
+  catch(e){LS_STATE[key]='bad';lsBadWarn(key);return fallback;}
+  if(!lsOkType(key,v)){LS_STATE[key]='bad';lsBadWarn(key);return fallback;}
+  LS_STATE[key]='ok';
+  return v;
+}
+function lsSet(key,value){
+  if(lsEnsureState(key)==='bad'){lsBadWarn(key);lsFailNotify(key,'read-broken');return false;}
+  try{
+    localStorage.setItem(key,JSON.stringify(value));
+    LS_STATE[key]='ok';
+    return true;
+  }catch(e){
+    /* 容量不足等は一時的な可能性があるため LS_STATE は 'bad' にせず再試行を許す */
+    lsFailNotify(key,(e&&e.name)||'setItem failed');
+    return false;
+  }
+}
+function gS(){return lsGet('ts',[]);}
+function pS(a){return lsSet('ts',a);}
 function pruneEmptySession(ss,si){if(si>=0&&ss[si]&&!(ss[si].exercises||[]).length){ss.splice(si,1);return true;}return false;}
-function gU(){try{var d=localStorage.getItem('ue');return d?JSON.parse(d):{};}catch(e){return{};}}
-function pU(o){try{localStorage.setItem('ue',JSON.stringify(o));}catch(e){}}
-function gIP(){try{var d=localStorage.getItem('ip');return d?JSON.parse(d):{};}catch(e){return{};}}
-function pIP(o){try{localStorage.setItem('ip',JSON.stringify(o));}catch(e){}}
-function gEM(){try{var d=localStorage.getItem('em');return d?JSON.parse(d):{};}catch(e){return{};}}
-function pEM(o){try{localStorage.setItem('em',JSON.stringify(o));}catch(e){}}
-function gCFG(){try{var d=localStorage.getItem('cfg');return d?JSON.parse(d):{};}catch(e){return{};}}
+function gU(){return lsGet('ue',{});}
+function pU(o){return lsSet('ue',o);}
+function gIP(){return lsGet('ip',{});}
+function pIP(o){return lsSet('ip',o);}
+function gEM(){return lsGet('em',{});}
+function pEM(o){return lsSet('em',o);}
+function gCFG(){return lsGet('cfg',{});}
 var deletedHistoryCache=null;
-function pCFG(o){try{localStorage.setItem('cfg',JSON.stringify(o));deletedHistoryCache=null;}catch(e){}}
+function pCFG(o){var ok=lsSet('cfg',o);if(ok)deletedHistoryCache=null;return ok;}
 function deletedHistoryDates(){if(deletedHistoryCache)return deletedHistoryCache;var a=gCFG().deleted_history_dates;deletedHistoryCache=Array.isArray(a)?a:[];return deletedHistoryCache;}
 function isHistoryDateDeleted(date){return deletedHistoryDates().indexOf(String(date||''))>=0;}
 function markHistoryDateDeleted(date){
@@ -1300,8 +1363,8 @@ function markHistoryDateDeleted(date){
   if(c.daily_memos&&c.daily_memos.hasOwnProperty(date))delete c.daily_memos[date];
   pCFG(c);
 }
-function gPO(){try{var d=localStorage.getItem('pr_overrides');return d?JSON.parse(d):{};}catch(e){return{};}}
-function pPO(o){try{localStorage.setItem('pr_overrides',JSON.stringify(o));}catch(e){}}
+function gPO(){return lsGet('pr_overrides',{});}
+function pPO(o){return lsSet('pr_overrides',o);}
 function prKey(part,name){return part+'|'+name;}
 function prRecalcMode(){return gCFG().pr_recalculated===true;}
 function setPrRecalcMode(v){var c=gCFG();c.pr_recalculated=!!v;pCFG(c);}
@@ -1447,7 +1510,7 @@ function varFromName(part,name){
 }
 function prefKey(part,name){return part+'|'+name;}
 function getPref(part,name){var em=gEM();return em[prefKey(part,name)]||{};}
-function setPref(part,name,p){var em=gEM(),k=prefKey(part,name);em[k]=Object.assign({},em[k]||{},p);pEM(em);}
+function setPref(part,name,p){var em=gEM(),k=prefKey(part,name);em[k]=Object.assign({},em[k]||{},p);return pEM(em);}
 function isCustom(part,name){var ue=gU(),l=ue[part]||[];for(var i=0;i<l.length;i++)if(l[i].name===name)return true;return false;}
 function numOr(v,d){v=parseFloat(v);return isNaN(v)?d:v;}
 function intOr(v,d){v=parseInt(v,10);return isNaN(v)?d:v;}
@@ -1902,7 +1965,7 @@ function saveCustomExercise(){
   for(var i=0;i<all.length;i++)if(all[i].name===name){exists=true;break;}
   if(!exists){
     ue[p].push({name:name,added_at:toDay(),count:1,weight:w,reps:r,interval:iv});
-    pU(ue);
+    if(!pU(ue)){dbg('add exercise NOT saved: storage write failed');return;}
     dbg('add exercise saved part='+p);
   }else{
     showToast('同名の種目があるため設定のみ更新します','info');
@@ -1910,7 +1973,7 @@ function saveCustomExercise(){
   var pref={std_w:w,std_r:r,interval:iv,order:ord,pinned:AX.pinned,hidden:AX.hidden};
   if(step>0)pref.weight_step=step;
   if(vars.length){pref.vars=vars;dbg('variationOptions updated name='+name);}
-  setPref(p,name,pref);
+  if(!setPref(p,name,pref)){dbg('add exercise pref NOT saved: storage write failed');return;}
   closeAddExercise();
   renderExList(p);
   dbg('add exercise rendered part='+p);
@@ -2377,7 +2440,9 @@ function startAnotherWalk(){
 function saveWalkDefaults(){
   var c=gCFG(),inc=parseFloat(document.getElementById('cfg-walk-inc').value),spd=parseFloat(document.getElementById('cfg-walk-spd').value),tm=parseInt(document.getElementById('cfg-walk-min').value,10);
   if(isNaN(inc)||inc<0||inc>25)inc=6.0;if(isNaN(spd)||spd<=0||spd>20)spd=6.3;if(!tm||tm<=0)tm=45;
-  c.walk_defaults={incline:parseFloat(inc.toFixed(1)),speed:parseFloat(spd.toFixed(1)),targetMin:tm};pCFG(c);alert('ウォーキング初期値を保存しました');showSet2();
+  c.walk_defaults={incline:parseFloat(inc.toFixed(1)),speed:parseFloat(spd.toFixed(1)),targetMin:tm};
+  if(!pCFG(c)){alert('ウォーキング初期値を保存できませんでした。端末の空き容量を確認してください');return;}
+  alert('ウォーキング初期値を保存しました');showSet2();
 }
 function closeRec(){
   var wasInterval=S.recRef&&S.recRef.from==='interval';
@@ -2735,7 +2800,8 @@ function saveStrengthSetDirect(ach,actualReps){
   var savedSet={order:ex.sets.length+1,part:S.part,exercise:S.ex,weight_kg:S.w,reps:ach?actualReps:S.r,actualReps:ach?null:actualReps,actual_reps:ach?null:actualReps,planned_reps:S.r,achieved:ach,pr_updated:!!(canPr&&Number(S.w)>Number(bestBefore||0)),rest_seconds:0,post_interval_elapsed_sec:S.lastPostWait||0,
     memo:S.vari!=='標準'?S.vari:'',variation:S.vari,parent_name:S.ex,original_name:S.origEx||S.ex,performed_at:new Date().toISOString()};
   ex.sets.push(savedSet);
-  pS(ss);S.sess=ss[si];S.exE=ex;
+  if(!pS(ss)){dbg('direct set NOT saved: storage write failed');return null;}
+  S.sess=ss[si];S.exE=ex;
   dbg('direct set saved order='+savedSet.order);
   if(ach)chkPR(S.part,S.ex,S.w,bestBefore);
   beep(660,0.15);
@@ -2885,7 +2951,8 @@ function saveSet(ach,actualReps){
   var savedSet={order:sets.length+1,part:S.part,exercise:S.ex,weight_kg:S.w,reps:ach?actualReps:S.r,actualReps:ach?null:actualReps,actual_reps:ach?null:actualReps,planned_reps:S.r,achieved:ach,pr_updated:!!(canPr&&Number(S.w)>Number(bestBefore||0)),rest_seconds:0,post_interval_elapsed_sec:S.lastPostWait||0,
     memo:S.vari!=='標準'?S.vari:'',variation:S.vari,parent_name:S.ex,original_name:S.origEx||S.ex,performed_at:new Date().toISOString()};
   sets.push(savedSet);
-  pS(ss);dbg('set saved order='+(sets.length));S.exE=ss[si].exercises[ei];S.sess=ss[si];
+  if(!pS(ss)){dbg('set NOT saved: storage write failed');return;}
+  dbg('set saved order='+(sets.length));S.exE=ss[si].exercises[ei];S.sess=ss[si];
   if(ach)chkPR(S.part,S.ex,S.w,bestBefore);
   beep(660,0.15);afterStrengthSetSaved(savedSet);
 }
@@ -3283,7 +3350,8 @@ function dailyMemo(date){date=date||toDay();var c=gCFG(),m=c.daily_memos||{},v=m
 function saveDailySummaryMemo(){
   var c=gCFG();c.daily_memos=c.daily_memos||{};
   c.daily_memos[toDay()]={date:toDay(),memo:document.getElementById('summary-memo').value||'',updatedAt:new Date().toISOString()};
-  pCFG(c);showToast('今日のメモを保存しました','success');renderHome();
+  if(!pCFG(c))return;
+  showToast('今日のメモを保存しました','success');renderHome();
 }
 function summaryDataForDate(date){
   date=date||toDay();
@@ -3465,7 +3533,9 @@ function resetTodaySession(){
   if(!confirm('今日のトレーニング記録をすべて削除し、未実施に戻しますか？'))return;
   if(!confirm('本当に削除しますか？'))return;
   if(S.tIv||S.tAutoTo)stopTimer();if(S.postActive)stopPostIntervalStopwatch();if(S.wk||S.wkIv)clearActiveWalkingSession();
-  ss.splice(si,1);pS(ss);S.part=null;S.ex=null;S.sess=null;S.exE=null;S.nextDraft=null;updateGlobalElapsed();renderHome();showToday();showToast('今日の記録を削除し、未実施に戻しました','info');
+  ss.splice(si,1);
+  if(!pS(ss))return;
+  S.part=null;S.ex=null;S.sess=null;S.exE=null;S.nextDraft=null;updateGlobalElapsed();renderHome();showToday();showToast('今日の記録を削除し、未実施に戻しました','info');
 }
 function findSessionIndex(id,date){var ss=gS();for(var i=0;i<ss.length;i++)if((id&&ss[i].id===id)||ss[i].date===date)return i;return -1;}
 function findExerciseIndex(si,ex){var ss=gS();if(si<0||!ss[si])return -1;var es=ss[si].exercises||[];for(var i=0;i<es.length;i++)if(es[i]===ex||((es[i].name===ex.name)&&(es[i].part===ex.part)))return i;return -1;}
@@ -3529,15 +3599,18 @@ function saveEdit(){
     for(var d=0;d<all.length;d++)if(all[d].name===newName){dup=true;break;}
     if(dup){
       showToast('同名の種目が既にあるため名称は変更しませんでした','info');
-      setPref(part,name,p);
+      if(!setPref(part,name,p))return;
     }else{
-      var ue=gU(),l=ue[part]||[];for(var i=0;i<l.length;i++)if(l[i].name===name){l[i].name=newName;l[i].weight=p.std_w;l[i].reps=p.std_r;l[i].interval=p.interval;break;}ue[part]=l;pU(ue);
-      var em=gEM(),old=prefKey(part,name),nw=prefKey(part,newName);em[nw]=Object.assign({},em[old]||{},p);delete em[old];pEM(em);S.editName=newName;
+      var ue=gU(),l=ue[part]||[];for(var i=0;i<l.length;i++)if(l[i].name===name){l[i].name=newName;l[i].weight=p.std_w;l[i].reps=p.std_r;l[i].interval=p.interval;break;}ue[part]=l;
+      if(!pU(ue))return;
+      var em=gEM(),old=prefKey(part,name),nw=prefKey(part,newName);em[nw]=Object.assign({},em[old]||{},p);delete em[old];
+      if(!pEM(em))return;
+      S.editName=newName;
     }
   }else{
     // 既存マスタ種目: 内部名は保持し表示名のみ変更（履歴互換）
     if(!isCustom(part,name))p.display_name=(newName&&newName!==name)?newName:'';
-    setPref(part,name,p);
+    if(!setPref(part,name,p))return;
   }
   dbg('saveExerciseOverride name='+S.editName);
   closeEdit();renderExList(part);
@@ -3550,8 +3623,10 @@ function deleteCustomEx(){
   if(!confirm('追加した種目「'+name+'」を削除しますか？'))return;
   if(!confirm('本当に削除しますか？ 過去の記録は残ります。'))return;
   dbg('deleteCustomExercise name='+name);
-  var ue=gU(),l=ue[part]||[];ue[part]=l.filter(function(e){return e.name!==name;});pU(ue);
-  var em=gEM();delete em[prefKey(part,name)];pEM(em);
+  var ue=gU(),l=ue[part]||[];ue[part]=l.filter(function(e){return e.name!==name;});
+  if(!pU(ue))return;
+  var em=gEM();delete em[prefKey(part,name)];
+  if(!pEM(em))return;
   closeEdit();renderExList(part);
   showToast('追加種目を削除しました','success');
 }
@@ -3744,7 +3819,9 @@ function deleteDayRecord(date){
   if(!hasLive&&!hasLegacy&&!hasMemo){showToast('この日の記録はありません','info');showHistDaily();return;}
   if(!confirm(dateDisp(date)+' の筋トレ・ウォーキング・メモをすべて削除しますか？'))return;
   if(!confirm('本当に削除しますか？この操作は元に戻せません。'))return;
-  ss=ss.filter(function(s){return !s||s.date!==date;});pS(ss);markHistoryDateDeleted(date);
+  ss=ss.filter(function(s){return !s||s.date!==date;});
+  if(!pS(ss))return;
+  markHistoryDateDeleted(date);
   if(date===toDay()){
     if(S.tIv||S.tAutoTo)stopTimer();if(S.postActive)stopPostIntervalStopwatch();if(S.wk||S.wkIv)clearActiveWalkingSession();
     S.part=null;S.ex=null;S.sess=null;S.exE=null;S.nextDraft=null;updateGlobalElapsed();
@@ -3825,7 +3902,9 @@ function saveSetEdit(){
   else{st.actualReps=st.reps;st.actual_reps=st.reps;}
   st.variation=document.getElementById('set-var').value||'標準';
   st.memo=document.getElementById('set-memo').value||'';
-  renumberSets(ex);pS(ss);markPrFlags();syncCurrentAfterMutation(r.si,r.ei);closeRec();refreshAfterRecordMutation(r.from,r.si,r.ei);
+  renumberSets(ex);
+  if(!pS(ss))return;
+  markPrFlags();syncCurrentAfterMutation(r.si,r.ei);closeRec();refreshAfterRecordMutation(r.from,r.si,r.ei);
 }
 function renumberSets(ex){var sets=(ex&&ex.sets)||[];for(var i=0;i<sets.length;i++)sets[i].order=i+1;}
 function syncCurrentAfterMutation(si,ei){var ss=gS();if(si>=0&&ss[si]&&ss[si].exercises&&ss[si].exercises[ei]&&S.exE&&ss[si].exercises[ei].part===S.part&&(ss[si].exercises[ei].name===S.ex||ss[si].exercises[ei].parent_name===S.ex))S.exE=ss[si].exercises[ei];}
@@ -3843,7 +3922,9 @@ function deleteSetRecord(si,ei,ki,from){
   var ss=gS(),ex=ss[si]&&ss[si].exercises&&ss[si].exercises[ei];if(!ex||!ex.sets||!ex.sets[ki])return;
   if(!confirm('このセットを削除しますか？'))return;
   var wasInterval=from==='interval';
-  ex.sets.splice(ki,1);renumberSets(ex);pS(ss);markPrFlags();syncCurrentAfterMutation(si,ei);closeRec();
+  ex.sets.splice(ki,1);renumberSets(ex);
+  if(!pS(ss))return;
+  markPrFlags();syncCurrentAfterMutation(si,ei);closeRec();
   if(wasInterval){returnToSetAfterIntervalDelete(si,ei);return;}
   refreshAfterRecordMutation(from,si,ei);
 }
@@ -3852,7 +3933,9 @@ function deleteExerciseRecord(si,ei,from){
   var nm=ex.parent_name||ex.name;
   if(!confirm('今日の'+nm+'の記録をすべて削除します。よろしいですか？'))return;
   if(!confirm('本当に削除する'))return;
-  ss[si].exercises.splice(ei,1);pruneEmptySession(ss,si);pS(ss);markPrFlags();updateGlobalElapsed();closeRec();
+  ss[si].exercises.splice(ei,1);pruneEmptySession(ss,si);
+  if(!pS(ss))return;
+  markPrFlags();updateGlobalElapsed();closeRec();
   if(S.exE===ex){S.exE=null;}
   if(from==='today')showToday();else showHist();
   showToast('種目記録を削除しました','info');
@@ -3943,11 +4026,15 @@ function openPREdit(part,name){
 function savePROverride(){
   var r=S.recRef;if(!r)return;var w=parseFloat(document.getElementById('pr-w').value)||0,repv=parseInt(document.getElementById('pr-r').value,10)||'';
   if(!validPRValue(w,repv||1,r.part,r.name)){alert('PRとして保存できない値です');return;}
-  var o=gPO();o[prKey(r.part,r.name)]={part:r.part,name:r.name,weight_kg:w,reps:repv,date:document.getElementById('pr-d').value||toDay(),variation:document.getElementById('pr-v').value||'標準',memo:document.getElementById('pr-m').value||'',manual:true,updatedAt:new Date().toISOString()};pPO(o);setPrRecalcMode(false);closeRec();dbg('savePROverride exercise='+r.name);showToast('PRを保存しました','success');showPR();
+  var o=gPO();o[prKey(r.part,r.name)]={part:r.part,name:r.name,weight_kg:w,reps:repv,date:document.getElementById('pr-d').value||toDay(),variation:document.getElementById('pr-v').value||'標準',memo:document.getElementById('pr-m').value||'',manual:true,updatedAt:new Date().toISOString()};
+  if(!pPO(o))return;
+  setPrRecalcMode(false);closeRec();dbg('savePROverride exercise='+r.name);showToast('PRを保存しました','success');showPR();
 }
 function deletePRItem(part,name){
   if(!confirm('このPRを削除しますか？'))return;
-  var o=gPO();o[prKey(part,name)]={part:part,name:name,deleted:true,manual:true,updatedAt:new Date().toISOString()};pPO(o);dbg('deletePR exercise='+name);showToast('PRを削除しました','info');showPR();
+  var o=gPO();o[prKey(part,name)]={part:part,name:name,deleted:true,manual:true,updatedAt:new Date().toISOString()};
+  if(!pPO(o))return;
+  dbg('deletePR exercise='+name);showToast('PRを削除しました','info');showPR();
 }
 function recalcPR(){
   if(!confirm('PRを保存済み記録から再計算します。手動編集したPRは再計算結果で置き換わる場合があります。よろしいですか？'))return;
@@ -3960,7 +4047,9 @@ function recalcPR(){
       if(!cur||w>cur.weight_kg){best[key]={part:ex.part,name:name,weight_kg:w,reps:r,date:(st.performed_at||ss[si].date||'').slice(0,10),variation:st.variation||st.memo||'標準',memo:st.memo||'',source:'recalc',updatedAt:new Date().toISOString()};}
     }
   }
-  var out={};for(var key in best){out[key]=best[key];count++;}pPO(out);setPrRecalcMode(true);markPrFlags();dbg('recalcPR completed count='+count);showToast('PRを再計算しました','success');showPR();
+  var out={};for(var key in best){out[key]=best[key];count++;}
+  if(!pPO(out))return;
+  setPrRecalcMode(true);markPrFlags();dbg('recalcPR completed count='+count);showToast('PRを再計算しました','success');showPR();
 }
 function openPRSource(part,name){
   var ss=gS(),names=aliasesFor(part,name);for(var si=ss.length-1;si>=0;si--)for(var ei=0;ei<(ss[si].exercises||[]).length;ei++){var ex=ss[si].exercises[ei],pn=ex.parent_name||ex.name;if(ex.part===part&&(pn===name||names.indexOf(pn)>=0||names.indexOf(ex.name)>=0)){showHistSets(si,ei);return;}}
@@ -3992,7 +4081,7 @@ function showSet2(){
 function togHidden(){S.showHidden=!S.showHidden;showSet2();}
 function togAutoNext(){setAutoNext(!isAutoNext());showSet2();}
 function togReferencePR(){setShowReferencePR(!showReferencePR());showSet2();showToast(showReferencePR()?'参考PRを表示します':'参考PRを非表示にしました','info');}
-function saveDeviceName(){var c=gCFG(),v=(document.getElementById('device-name').value||'').trim();c.device_name=v||'未設定の端末';pCFG(c);showToast('端末名を保存しました','success');showSet2();}
+function saveDeviceName(){var c=gCFG(),v=(document.getElementById('device-name').value||'').trim();c.device_name=v||'未設定の端末';if(!pCFG(c))return;showToast('端末名を保存しました','success');showSet2();}
 function lastImportLabel(){var c=gCFG();return c.last_import?String(c.last_import).slice(0,16).replace('T',' '):'未実施';}
 function backupStats(data){data=data||{sessions:gS()};var s=data.sessions||[],st=0,wk=0,today=0,td=toDay();for(var i=0;i<s.length;i++)for(var j=0;j<(s[i].exercises||[]).length;j++){var ex=s[i].exercises[j],isW=ex.type==='walking'||!!ex.cardio;if(isW)wk++;else st+=(ex.sets||[]).length;if(s[i].date===td)today+=isW?1:(ex.sets||[]).length;}return{strength:st,walking:wk,total:st+wk,today:today,sessions:s.length};}
 function ensureSyncIds(data){
@@ -4035,7 +4124,19 @@ function mergeSessions(current,incoming){current=ensureSyncIds({sessions:current
 function mergeNamedLists(a,b){a=a||{};b=b||{};var out=JSON.parse(JSON.stringify(a));for(var p in b){out[p]=out[p]||[];var names={};for(var i=0;i<out[p].length;i++)names[out[p][i].name]=i;for(var j=0;j<b[p].length;j++){var e=b[p][j],idx=names[e.name];if(idx===undefined){out[p].push(e);names[e.name]=out[p].length-1;}else out[p][idx]=Object.assign({},out[p][idx],e);}}return out;}
 function baseBestForNames(part,names){var b=0;for(var i=0;i<names.length;i++)b=Math.max(b,getPRV(part,names[i]));return b;}
 function markPrFlags(){var ss=gS(),run={};ss.sort(function(a,b){return String(a.date||'').localeCompare(String(b.date||''));});for(var s=0;s<ss.length;s++)for(var e=0;e<(ss[s].exercises||[]).length;e++){var ex=ss[s].exercises[e];if(!isStrengthPart(ex.part))continue;var names=aliasesFor(ex.part,ex.parent_name||ex.name),key=ex.part+'|'+names[0];if(run[key]===undefined)run[key]=baseBestForNames(ex.part,names);for(var k=0;k<(ex.sets||[]).length;k++){var st=ex.sets[k],w=Number(st.weight_kg)||0;st.pr_updated=!!(validPRSet(ex,st)&&w>Number(run[key]||0));if(validPRSet(ex,st)&&w>Number(run[key]||0))run[key]=w;}}pS(ss);}
-function applyImportMeta(data){var old=gCFG(),next=Object.assign({},old,data.app_config||{});next.device_name=old.device_name||next.device_name||'未設定の端末';next.last_import=new Date().toISOString();pCFG(next);if(data.user_exercises)pU(mergeNamedLists(gU(),data.user_exercises));if(data.exercise_meta)pEM(Object.assign({},gEM(),data.exercise_meta));if(data.interval_prefs)pIP(Object.assign({},gIP(),data.interval_prefs));if(data.pr_overrides)pPO(Object.assign({},gPO(),data.pr_overrides));}
+function applyImportMeta(data){
+  /* マージ規則は変更しない。保存に失敗したキー名の配列を返す */
+  var failed=[];
+  var old=gCFG(),next=Object.assign({},old,data.app_config||{});
+  next.device_name=old.device_name||next.device_name||'未設定の端末';
+  next.last_import=new Date().toISOString();
+  if(!pCFG(next))failed.push('cfg');
+  if(data.user_exercises&&!pU(mergeNamedLists(gU(),data.user_exercises)))failed.push('ue');
+  if(data.exercise_meta&&!pEM(Object.assign({},gEM(),data.exercise_meta)))failed.push('em');
+  if(data.interval_prefs&&!pIP(Object.assign({},gIP(),data.interval_prefs)))failed.push('ip');
+  if(data.pr_overrides&&!pPO(Object.assign({},gPO(),data.pr_overrides)))failed.push('pr_overrides');
+  return failed;
+}
 function activeScreenId(){var xs=document.querySelectorAll('.screen.on');return xs&&xs[0]?xs[0].id:'';}
 function refreshAfterImport(prev){
   renderHome();
@@ -4049,11 +4150,23 @@ function executeImport(mode){
   var prev=activeScreenId();
   if(mode==='replace'&&!confirm('現在のデータをバックアップファイルで上書きします。保存済みデータが置き換わります。実行しますか？'))return;
   if(mode==='replace'&&!confirm('本当に上書きしますか？'))return;
-  if(mode==='replace'){pS(ensureSyncIds(d).sessions||[]);if(d.user_exercises)pU(d.user_exercises);if(d.exercise_meta)pEM(d.exercise_meta);if(d.interval_prefs)pIP(d.interval_prefs);var c=Object.assign({},d.app_config||{});c.device_name=deviceName();c.last_import=new Date().toISOString();pCFG(c);}
-  else{pS(mergeSessions(gS(),d.sessions||[]));applyImportMeta(d);}
+  var failed=[];
+  if(mode==='replace'){
+    if(!pS(ensureSyncIds(d).sessions||[]))failed.push('ts');
+    if(d.user_exercises&&!pU(d.user_exercises))failed.push('ue');
+    if(d.exercise_meta&&!pEM(d.exercise_meta))failed.push('em');
+    if(d.interval_prefs&&!pIP(d.interval_prefs))failed.push('ip');
+    var c=Object.assign({},d.app_config||{});c.device_name=deviceName();c.last_import=new Date().toISOString();
+    if(!pCFG(c))failed.push('cfg');
+  }
+  else{
+    if(!pS(mergeSessions(gS(),d.sessions||[])))failed.push('ts');
+    failed=failed.concat(applyImportMeta(d));
+  }
+  if(failed.length){dbg('import failed keys='+failed.join(','));showToast('インポートを完了できませんでした（'+failed.join(',')+'）','info');return;}
   markPrFlags();cancelImport();showToast('インポート完了','success');refreshAfterImport(prev);
 }
-function clrToday(){if(confirm('今日のデータを削除しますか？')){pS(gS().filter(function(s){return s.date!==toDay();}));if(S.tIv||S.tAutoTo)stopTimer();if(S.postActive)stopPostIntervalStopwatch();S.exE=null;S.nextDraft=null;updateGlobalElapsed();renderHome();showToast('今日のデータを削除しました','info');showSet2();}}
+function clrToday(){if(confirm('今日のデータを削除しますか？')){if(!pS(gS().filter(function(s){return s.date!==toDay();})))return;if(S.tIv||S.tAutoTo)stopTimer();if(S.postActive)stopPostIntervalStopwatch();S.exE=null;S.nextDraft=null;updateGlobalElapsed();renderHome();showToast('今日のデータを削除しました','info');showSet2();}}
 
 // =====================================================
 // MODAL BACKDROP
