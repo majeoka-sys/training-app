@@ -188,6 +188,14 @@ html,body{margin:0;padding:0;background:#02040A;color:var(--text);
 .app-logo{width:56px;height:56px;border-radius:18px;display:block;flex:0 0 auto;box-shadow:0 12px 30px rgba(0,0,0,.42),0 0 0 1px rgba(255,255,255,.12);}
 .app-brand-title{font-size:22px;font-weight:900;line-height:1.05;color:var(--text);letter-spacing:.02em;}
 .app-brand-sub{font-size:11px;color:var(--cyan);font-weight:900;letter-spacing:.14em;text-transform:uppercase;margin-top:5px;}
+.launch-line{display:flex;align-items:center;gap:8px;margin:6px 0 0;color:var(--cyan);font-size:14px;font-weight:750;}
+@media (prefers-reduced-motion:no-preference){
+  .launch-line::before{content:"";width:26px;height:4px;border-radius:3px;background:linear-gradient(90deg,var(--blue),var(--cyan));transform-origin:left;}
+  .launch-line.arrive{animation:launch-rise .64s ease-out;}
+  .launch-line.arrive::before{animation:launch-stroke .72s ease-out;}
+  @keyframes launch-rise{from{opacity:.2;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes launch-stroke{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+}
 .hdr-app-logo{width:32px;height:32px;border-radius:10px;display:inline-block;flex:0 0 auto;box-shadow:0 7px 18px rgba(0,0,0,.34),0 0 0 1px rgba(255,255,255,.1);}
 .settings-brand{display:flex;align-items:center;gap:13px;padding:16px;background:linear-gradient(160deg,rgba(59,130,246,.16),rgba(21,26,34,.96));border:1px solid var(--line2);border-radius:16px;}
 .settings-brand .app-logo{width:56px;height:56px;}
@@ -468,7 +476,13 @@ button.sv{appearance:none;-webkit-appearance:none;}
 .var-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
 .var-tag{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:7px 13px;border-radius:999px;
   border:1px solid var(--line2);background:#1E2633;color:var(--text);font-size:14px;font-weight:800;cursor:pointer;}
-.var-tag .x{color:var(--text3);font-weight:900;}
+.exercise-add{padding:12px 16px 0;}
+.var-entry{display:flex;gap:8px;margin-top:10px;}
+.var-entry input{flex:1;min-width:0;}
+.var-entry button{flex-shrink:0;}
+.var-tag[aria-pressed="true"]{border-color:var(--cyan);color:var(--cyan);}
+.var-message{color:var(--text2);font-size:14px;}
+#vb .mini-btn{margin-top:10px;}
 .var-tag.sug{background:transparent;border-style:dashed;color:var(--text2);}
 .field-note{font-size:12px;color:var(--text3);margin-top:4px;line-height:1.5;}
 .t-prev{font-size:12px;color:var(--text3);margin-top:8px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;}
@@ -515,6 +529,10 @@ button.sv{appearance:none;-webkit-appearance:none;}
 .rest-buttons,.draft-buttons{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;}
 .rest-buttons button,.draft-buttons button{min-height:42px;border-radius:11px;border:1px solid var(--line2);background:#202A39;color:var(--text);font-size:16px;font-weight:900;}
 .draft-card{margin:0 14px 8px;}
+.set-scope{margin:10px 16px 0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;color:var(--text2);font-size:14px;}
+.set-scope .mini-btn,.draft-card .mini-btn{min-height:44px;}
+.set-scope .mini-btn[aria-pressed="true"]{color:var(--cyan);border-color:var(--cyan);}
+.draft-card .mini-btn{margin-top:8px;}
 .draft-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;}
 .draft-title{font-size:13px;color:var(--cyan);font-weight:900;letter-spacing:.12em;text-transform:uppercase;}
 .draft-sub{font-size:12px;color:var(--text3);font-weight:800;}
@@ -755,13 +773,21 @@ button.sv{appearance:none;-webkit-appearance:none;}
           <button class="mini-btn" onclick="moveEd(1)">下へ</button>
         </div>
       </div>
-      <div class="field full"><label>バリエーション候補（カンマ区切り）</label><input id="ed-vars" type="text" autocomplete="off" placeholder="標準, 浅め, 深め" oninput="renderVarTags('ed')"><div class="var-tags" id="ed-var-tags"></div></div>
+      <div class="field full">
+        <label for="ed-var-name">バリエーション</label>
+        <div class="var-entry"><input id="ed-var-name" type="text" autocomplete="off" placeholder="バリエーション名"><button type="button" class="mini-btn" id="ed-var-apply" onclick="applyVariationName('ed')">追加</button></div>
+        <div class="var-message" id="ed-var-message" role="status"></div>
+        <div class="field-note">登録済みの名前をタップして編集</div>
+        <div class="var-tags" id="ed-var-tags"></div>
+        <div class="var-tags" id="ed-var-actions" style="display:none"><button type="button" class="mini-btn" onclick="removeVariation('ed')">候補から外す</button><button type="button" class="mini-btn" onclick="selectVariationName('ed',null)">新規入力へ</button></div>
+        <div class="var-tags" id="ed-var-suggestions"></div>
+      </div>
     </div>
     <div class="modal-actions">
       <button class="wide-btn dk" onclick="closeEdit()">閉じる</button>
       <button class="wide-btn" onclick="saveEdit()">保存</button>
     </div>
-    <button class="wide-btn red" id="ed-del" style="margin-top:10px;display:none" onclick="deleteCustomEx()">追加種目を削除</button>
+    <button class="wide-btn red" id="ed-del" style="margin-top:10px;display:none" onclick="deleteCustomEx()">メニューから外す（記録は残る）</button>
   </div>
 </div>
 
@@ -783,11 +809,38 @@ button.sv{appearance:none;-webkit-appearance:none;}
           <button class="mini-btn" id="ax-hide" onclick="toggleAxHidden()">表示中</button>
         </div>
       </div>
-      <div class="field full"><label>バリエーション候補（カンマ区切り）</label><input id="ax-vars" type="text" autocomplete="off" placeholder="標準, 浅め, 深め" oninput="renderVarTags('ax')"><div class="var-tags" id="ax-var-tags"></div></div>
+      <div class="field full">
+        <label for="ax-var-name">バリエーション</label>
+        <div class="var-entry"><input id="ax-var-name" type="text" autocomplete="off" placeholder="バリエーション名"><button type="button" class="mini-btn" id="ax-var-apply" onclick="applyVariationName('ax')">追加</button></div>
+        <div class="var-message" id="ax-var-message" role="status"></div>
+        <div class="field-note">登録済みの名前をタップして編集</div>
+        <div class="var-tags" id="ax-var-tags"></div>
+        <div class="var-tags" id="ax-var-actions" style="display:none"><button type="button" class="mini-btn" onclick="removeVariation('ax')">候補から外す</button><button type="button" class="mini-btn" onclick="selectVariationName('ax',null)">新規入力へ</button></div>
+        <div class="var-tags" id="ax-var-suggestions"></div>
+      </div>
     </div>
     <div class="modal-actions">
       <button class="wide-btn dk" onclick="closeAddExercise()">キャンセル</button>
       <button class="wide-btn" onclick="saveCustomExercise()">追加して記録へ</button>
+    </div>
+  </div>
+</div>
+
+<div id="variation-md" class="modal" role="dialog" aria-modal="true" aria-labelledby="variation-title">
+  <div class="modal-card">
+    <div class="modal-title" id="variation-title">バリエーションを追加・編集</div>
+    <div class="field full">
+        <label for="set-var-name">バリエーション</label>
+        <div class="var-entry"><input id="set-var-name" type="text" autocomplete="off" placeholder="バリエーション名"><button type="button" class="mini-btn" id="set-var-apply" onclick="applyVariationName('set')">追加</button></div>
+        <div class="var-message" id="set-var-message" role="status"></div>
+        <div class="field-note">登録済みの名前をタップして編集</div>
+        <div class="var-tags" id="set-var-tags"></div>
+        <div class="var-tags" id="set-var-actions" style="display:none"><button type="button" class="mini-btn" onclick="removeVariation('set')">候補から外す</button><button type="button" class="mini-btn" onclick="selectVariationName('set',null)">新規入力へ</button></div>
+        <div class="var-tags" id="set-var-suggestions"></div>
+      </div>
+    <div class="modal-actions">
+      <button class="wide-btn dk" onclick="closeSetVariations()">キャンセル</button>
+      <button class="wide-btn" onclick="saveSetVariations()">保存して戻る</button>
     </div>
   </div>
 </div>
@@ -830,11 +883,11 @@ button.sv{appearance:none;-webkit-appearance:none;}
 <!-- HOME -->
 <div id="sh" class="screen">
   <div class="hero-wrap">
-    <div class="app-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">Training Log</div></div></div>
+    <div class="app-brand"><img src="icons/icon-192.png" alt="" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><p class="launch-line" id="launch-line">今日も、1セットから。</p></div></div>
     <div class="date-bar"><div class="dt" id="h-dt"></div><div class="si" id="h-si"></div></div>
     <div class="summary-card" id="h-sum"></div>
   </div>
-  <div class="app-version">UI v3.22.0 record-safety</div>
+  <div class="app-version">UI v3.24.0</div>
   <div class="home-elapsed-wrap"><span class="elapsed-chip" data-elapsed-chip="home"></span></div>
   <div class="backup-warn" id="home-backup-warn">バックアップから7日以上経っています</div>
   <div class="scroll"><div class="home-sec">Body Parts</div><div class="parts-stack" id="h-pg"></div></div>
@@ -853,7 +906,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="hdr-title" id="ex-tt"></div>
     <div class="hdr-r"></div>
   </div>
-  <div class="scroll" id="ex-list"></div>
+  <div class="scroll"><div class="exercise-add"><button class="add-btn" onclick="openAddExercise()">＋ 種目追加</button></div><div id="ex-list"></div></div>
 </div>
 <!-- PREV RECORD -->
 <div id="sprev" class="screen">
@@ -1010,9 +1063,14 @@ button.sv{appearance:none;-webkit-appearance:none;}
         </div>
       </div>
     </div>
+    <div class="set-scope" id="set-scope">
+      <button type="button" class="mini-btn" id="set-only" aria-pressed="false" onclick="toggleSetOnly()">このセットだけ</button>
+      <span id="scope-preview" aria-live="polite"></span>
+    </div>
     <div class="meter-card variation" id="vb" style="display:none;margin:14px 16px 0">
       <div class="inp-lbl">バリエーション</div>
       <div class="var-chips" id="vcs"></div>
+      <button type="button" class="mini-btn" onclick="openSetVariations()">＋ バリエーションを追加・編集</button>
     </div>
     <div class="ach-bar">
       <button class="abtn ok" data-role="strength-achieve" onclick="doSet(true)">✓ 達成</button>
@@ -1075,6 +1133,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
       <div class="draft-box"><div class="draft-label">重量</div><button type="button" class="draft-value" id="draft-w" data-role="edit-draft-weight">0kg</button><div class="draft-buttons"><button onclick="adjDraftWeight(-5)">-5</button><button onclick="adjDraftWeight(-1)">-1</button><button onclick="adjDraftWeight(-0.5)">-0.5</button><button onclick="adjDraftWeight(0.5)">+0.5</button><button onclick="adjDraftWeight(1)">+1</button><button onclick="adjDraftWeight(5)">+5</button></div></div>
       <div class="draft-box"><div class="draft-label">レップ</div><button type="button" class="draft-value" id="draft-r" data-role="edit-draft-reps">10回</button><div class="draft-buttons"><button onclick="adjDraftReps(-5)">-5</button><button onclick="adjDraftReps(-1)">-1</button><button onclick="adjDraftReps(1)">+1</button><button onclick="adjDraftReps(5)">+5</button></div></div>
     </div>
+    <button type="button" class="mini-btn" id="draft-previous" hidden onclick="resumePreviousPlan()">次から前回どおり</button>
   </div>
   <div class="t-ctrl">
     <button class="tbtn dk" onclick="adjT(-30)">−30秒</button>
@@ -1175,7 +1234,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
     <div class="hdr-title">設定</div><div class="hdr-r"></div>
   </div>
   <div class="scroll"><div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
-    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.22.0 record-safety</div></div></div>
+    <div class="settings-brand"><img src="icons/icon-192.png" alt="トレーニング記録" class="app-logo"><div><div class="app-brand-title">トレーニング記録</div><div class="app-brand-sub">UI v3.24.0</div></div></div>
     <div class="panel">
       <div class="panel-h">端末・同期</div>
       <div class="panel-b form-grid">
@@ -1203,7 +1262,7 @@ button.sv{appearance:none;-webkit-appearance:none;}
       </div>
     </div>
     <button onclick="togHidden()" id="hidden-btn" style="padding:16px;background:#1a1a1a;border:1px solid #333;border-radius:14px;color:#f0f0f0;font-size:16px;cursor:pointer;text-align:left;">👁 非表示種目を表示</button>
-    <button onclick="clrToday()" style="padding:16px;background:#1a1a1a;border:1px solid #ef4444;border-radius:14px;color:#ef4444;font-size:16px;cursor:pointer;text-align:left;">🗑 今日のデータを削除</button>
+    <button onclick="clrToday()" style="padding:16px;background:#1a1a1a;border:1px solid #ef4444;border-radius:14px;color:#ef4444;font-size:16px;cursor:pointer;text-align:left;">🗑 今日のトレーニング記録をすべて削除</button>
     <input type="file" id="imp-f" accept=".json" style="display:none" onchange="onImp(event)">
     <div style="padding:14px;background:#1a1a1a;border-radius:14px;border:1px solid #333;font-size:13px;color:#555;line-height:1.9;">
       💡 iPad Safari で「ホーム画面に追加」するとフルスクリーンで使えます<br>
@@ -1567,16 +1626,11 @@ var VAR_SUGGEST={
   '足':['標準','足幅広め','足幅狭め','片足','ストレッチ重視'],
   '有酸素':['標準','ゆるめ','普通','強め']
 };
-function parseVarsInput(str){
-  var out=[],seen={};
-  String(str||'').split(/[,、/]/).forEach(function(v){v=v.trim();if(v&&!seen[v]){seen[v]=1;out.push(v);}});
-  return out;
-}
 function getVariants(part,name){
   var own=getPref(part,name).vars,pn=parentName(part,name),par=(pn!==name)?getPref(part,pn).vars:null;
   var g=grpCfg(part,name);
-  var a=(own&&own.length)?own.slice():((par&&par.length)?par.slice():((g&&g.vars)?g.vars.slice():((VARS[part]||['標準']).slice())));
-  var seen={};return a.filter(function(v){if(seen[v])return false;seen[v]=true;return true;});
+  var a=(Array.isArray(own)&&own.length)?own.slice():((Array.isArray(par)&&par.length)?par.slice():((g&&g.vars)?g.vars.slice():((VARS[part]||['標準']).slice())));
+  return Array.from(new Set(a.filter(function(v){return typeof v==='string'&&v.trim();})));
 }
 function mergeEx(base,over){
   over=over||{};
@@ -1666,7 +1720,7 @@ var S={part:null,ex:null,sess:null,exE:null,
   strengthDelegateInstalled:false,lastDirectActionAt:0,lastDirectRole:'',strengthActionBusy:false,
   wk:null,wkIv:null,wkStartMs:0,wkElapsedAdd:0,wkPaused:false,wkPauseAt:0,wkSi:-1,wkEi:-1,
   recType:null,recRef:null,histPart:null,histEx:null,histDate:null,histMonth:null,globalElapsedIv:null,nextDraft:null,
-  numT:null,numStr:'0',
+  numT:null,numStr:'0',onlyThisSet:false,
   pvPart:null,pvName:null,restOvr:null,walkStartDraft:null,
   dayInterval:null};/*その日その種目で確定したインターバル設定値。日付が変わると破棄する*/
 
@@ -1674,6 +1728,7 @@ var S={part:null,ex:null,sess:null,exE:null,
 // SCREEN
 // =====================================================
 function beforeScreenChange(id){
+  if(id!=='sh')document.getElementById('launch-line').classList.remove('arrive');
   if(id!=='si'&&activeScreenId()==='si'){stopTimer();S.intervalRef=null;}
 }
 function captureIntervalRef(){
@@ -1931,8 +1986,7 @@ function renderExList(part){
   if(act.length>0){var ga=addST(list,'直近よく使う種目');for(var i=0;i<act.length;i++)addExCard(ga,act[i],part,false);}
   if(oth.length>0){var go=addST(list,'全種目');for(var i=0;i<oth.length;i++)addExCard(go,oth[i],part,false);}
   var aa=document.createElement('div');aa.className='add-area';
-  aa.innerHTML='<button class="add-btn" onclick="openAddExercise()">＋ 種目追加</button>'
-    +'<button class="add-btn" style="margin-top:10px;background:#151A22;border-color:var(--line2);color:var(--text);" onclick="showHistPart(\''+escJS(part)+'\')">'+esc(part)+'の履歴を見る</button>'
+  aa.innerHTML='<button class="add-btn" style="margin-top:10px;background:#151A22;border-color:var(--line2);color:var(--text);" onclick="showHistPart(\''+escJS(part)+'\')">'+esc(part)+'の履歴を見る</button>'
     +'<button class="add-btn" style="margin-top:10px;background:#151A22;border-color:var(--line2);color:var(--text2);" onclick="togHiddenInList()">'+(S.showHidden?'👁 非表示種目を隠す':'👁 非表示種目を表示')+'</button>';
   list.appendChild(aa);
   dbg('add exercise visible part='+part);
@@ -1963,25 +2017,90 @@ function addExCard(list,ex,part,isDone){
   list.appendChild(card);
 }
 var AX={pinned:true,hidden:false};
-function varTagPart(pfx){return pfx==='ed'?(S.editPart||S.part):S.part;}
-function renderVarTags(pfx){
-  var part=varTagPart(pfx);
-  var inp=document.getElementById(pfx+'-vars'),box=document.getElementById(pfx+'-var-tags');
-  if(!inp||!box)return;
-  var cur=parseVarsInput(inp.value);
-  box.innerHTML='';
-  cur.forEach(function(v){
-    var t=document.createElement('span');t.className='var-tag';
-    t.innerHTML=esc(v)+' <span class="x">×</span>';
-    t.onclick=function(){inp.value=cur.filter(function(x){return x!==v;}).join(', ');renderVarTags(pfx);};
-    box.appendChild(t);
+// 各画面は保存まで下書きを持つ。編集するのは候補名だけで、記録済みのセットは対象外。
+var variationEditors={};
+function beginVariationEditor(prefix,part,initial,selected){
+  variationEditors[prefix]={
+    names:Array.from(new Set(['標準'].concat(initial))),
+    part:part,editing:null,selected:selected||'標準'
+  };
+  selectVariationName(prefix,null);
+}
+function selectVariationName(prefix,name){
+  var editor=variationEditors[prefix],field=document.getElementById(prefix+'-var-name');
+  editor.editing=name;
+  field.value=name||'';
+  document.getElementById(prefix+'-var-message').textContent='';
+  document.getElementById(prefix+'-var-apply').textContent=name===null?'追加':'名前を変更';
+  document.getElementById(prefix+'-var-actions').style.display=name===null?'none':'flex';
+  field.onkeydown=function(event){
+    if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229){
+      event.preventDefault();applyVariationName(prefix);
+    }
+  };
+  renderVariationChoices(prefix);
+  if(name!==null){field.focus();field.select();}
+}
+function renderVariationChoices(prefix){
+  var editor=variationEditors[prefix];
+  var list=document.getElementById(prefix+'-var-tags'),suggestions=document.getElementById(prefix+'-var-suggestions');
+  list.innerHTML='';suggestions.innerHTML='';
+  function chip(box,label,suggested){
+    var button=document.createElement('button');
+    button.type='button';button.className=suggested?'var-tag sug':'var-tag';
+    button.textContent=(suggested?'＋ ':'')+label;
+    button.disabled=label==='標準';
+    button.setAttribute('aria-pressed',String(label===editor.editing));
+    button.onclick=function(){
+      if(suggested){
+        if(!applyVariationName(prefix))return;
+        if(editor.names.indexOf(label)<0){editor.names.push(label);editor.selected=label;}
+        selectVariationName(prefix,null);
+      }else if(applyVariationName(prefix)&&editor.names.indexOf(label)>=0){
+        selectVariationName(prefix,label);
+      }
+    };
+    box.appendChild(button);
+  }
+  editor.names.forEach(function(name){chip(list,name,false);});
+  (VAR_SUGGEST[editor.part]||[]).forEach(function(name){
+    if(editor.names.indexOf(name)<0)chip(suggestions,name,true);
   });
-  (VAR_SUGGEST[part]||[]).forEach(function(v){
-    if(cur.indexOf(v)>=0)return;
-    var t=document.createElement('span');t.className='var-tag sug';t.textContent='＋ '+v;
-    t.onclick=function(){inp.value=cur.concat([v]).join(', ');renderVarTags(pfx);};
-    box.appendChild(t);
-  });
+}
+function applyVariationName(prefix){
+  var editor=variationEditors[prefix],field=document.getElementById(prefix+'-var-name');
+  var name=field.value.trim(),old=editor.editing;
+  if(!name&&old===null)return true;
+  var message=document.getElementById(prefix+'-var-message');
+  if(!name||name!==old&&editor.names.indexOf(name)>=0){
+    message.textContent=name?'同じ名前の候補がすでにあります。':'名前を入力してください。';
+    field.focus();return false;
+  }
+  if(old===null){editor.names.push(name);editor.selected=name;}
+  else{
+    editor.names[editor.names.indexOf(old)]=name;
+    if(editor.selected===old)editor.selected=name;
+  }
+  selectVariationName(prefix,null);
+  return true;
+}
+function removeVariation(prefix){
+  var editor=variationEditors[prefix],name=editor.editing;
+  if(!name||name==='標準')return;
+  editor.names=editor.names.filter(function(v){return v!==name;});
+  if(editor.selected===name)editor.selected='標準';
+  selectVariationName(prefix,null);
+}
+function openSetVariations(){
+  beginVariationEditor('set',S.part,getVariants(S.part,S.ex),S.vari);
+  document.getElementById('variation-md').classList.add('on');
+}
+function closeSetVariations(){document.getElementById('variation-md').classList.remove('on');}
+function saveSetVariations(){
+  if(!applyVariationName('set'))return;
+  var editor=variationEditors.set;
+  if(!setPref(S.part,S.ex,{vars:editor.names}))return;
+  S.vari=editor.selected;closeSetVariations();renderSet();
 }
 function updateAxToggles(){
   var pin=document.getElementById('ax-pin'),hid=document.getElementById('ax-hide');
@@ -2002,8 +2121,7 @@ function openAddExercise(){
   document.getElementById('ax-i').value=90;
   document.getElementById('ax-o').value=0;
   updateAxToggles();
-  document.getElementById('ax-vars').value='標準';
-  renderVarTags('ax');
+  beginVariationEditor('ax',S.part,['標準']);
   document.getElementById('add-md').classList.add('on');
 }
 function closeAddExercise(){document.getElementById('add-md').classList.remove('on');}
@@ -2016,8 +2134,8 @@ function saveCustomExercise(){
   var step=numOr(document.getElementById('ax-step').value,0);
   var iv=roundInterval(intOr(document.getElementById('ax-i').value,90));/*設定値は30秒単位*/
   var ord=intOr(document.getElementById('ax-o').value,0);
-  var vars=parseVarsInput(document.getElementById('ax-vars').value);
-  if(vars.length&&vars.indexOf('標準')<0)vars.unshift('標準');
+  if(!applyVariationName('ax'))return;
+  var vars=variationEditors.ax.names;
   dbg('saveCustomExercise part='+p+' name='+name);
   var ue=gU();if(!ue[p])ue[p]=[];
   var exists=false,all=getExList(p);
@@ -2621,7 +2739,7 @@ function saveWalkEdit(){
 }
 function deleteWalkRecord(si,ei,from){
   var ss=gS(),ex=ss[si]&&ss[si].exercises&&ss[si].exercises[ei];if(!ex||!ex.cardio)return;
-  if(!confirm('このウォーキング記録を削除しますか？'))return;
+  if(!confirm(ss[si].date+' の「'+(ex.parent_name||ex.name||'ウォーキング')+'」の歩行記録を削除しますか？'))return;
   var active=recordMatches(S.wkRef,ss[si],ex),resume=S.walkEditResume&&recordMatches(S.walkEditResume.wkRef,ss[si],ex);
   ss[si].exercises.splice(ei,1);pruneEmptySession(ss,si);if(!pS(ss))return;
   if(active){clearActiveWalkingSession();S.exE=null;}if(resume)S.walkEditResume=null;
@@ -2633,6 +2751,7 @@ function deleteWalkRecord(si,ei,from){
 // =====================================================
 function isWalkingEx(part,name){var n=String(name||'');return part==='有酸素'||n.indexOf('ウォーキング')>=0||n.indexOf('トレッドミル')>=0||n.indexOf('有酸素')>=0;}
 function selEx(part,name){
+  S.onlyThisSet=false;
   S.nextDraft=null;S.restOvr=null;S.dayInterval=null;/*種目を選び直したら手動の休憩変更とその日の値はリセット*/
   if(isWalkingEx(part,name)){startWalk(part,name);return;}
   if(S.postActive)stopPostIntervalStopwatch();
@@ -2645,16 +2764,16 @@ function selEx(part,name){
   else{ss[si].exercises[ei].parent_name=ss[si].exercises[ei].parent_name||S.ex;ss[si].exercises[ei].original_name=ss[si].exercises[ei].original_name||name;}
   if(!pS(ss))return;S.sess=ss[si];S.exE=ss[si].exercises[ei];
   var sets=S.exE.sets||[];
-  var ps=prevSetForOrder(part,S.ex,sets.length+1);/*前回のセット単位の値を初期値に使う*/
-  if(ps){S.w=parseFloat(ps.weight_kg)||0;S.r=Math.max(1,parseInt(ps.planned_reps||ps.reps,10)||10);}
-  else if(sets.length>0){var l=sets[sets.length-1];S.w=l.weight_kg||0;S.r=l.reps||10;}
-  else{var pv=getPrevAny(part,S.ex);S.w=pv.w||0;S.r=pv.r||10;}
+  var plan=nextStrengthPlan(part,S.ex,sets);
+  S.w=plan.weight;S.r=plan.reps;
   S.vari=varFromName(part,name);
   initAC();silence();
   renderSet();show('sset');bindStrengthActionButtons();
 }
 function renderSet(){
   var sets=S.exE.sets||[];
+  S.scopePrevious=previousStrengthSets(S.part,S.ex);
+  renderSetScope();
   document.getElementById('sn-lbl').textContent=dispName(S.part,S.ex);
   document.getElementById('s-num').textContent=sets.length+1;
   document.getElementById('wv').textContent=fmt(S.w);
@@ -2674,7 +2793,7 @@ function renderSet(){
   if(pc)pc.innerHTML=prevSetCompareHtml(S.part,S.ex,sets.length+1,S.w,S.r);
   var vl=getVariants(S.part,S.ex),vb=document.getElementById('vb');
   if(vl&&vl.indexOf(S.vari)<0)vl=vl.concat([S.vari]); // 既存履歴のバリエーション値も選択肢に残す
-  if(vl&&vl.length&&!(vl.length===1&&vl[0]==='標準')){
+  if(vl&&vl.length){
     vb.style.display='';var vc=document.getElementById('vcs');vc.innerHTML='';
     for(var i=0;i<vl.length;i++){(function(v){var c=document.createElement('div');c.className='vc'+(v===S.vari?' sel':'');c.textContent=v;c.onclick=function(){S.vari=v;renderSet();};vc.appendChild(c);})(vl[i]);}
   }else vb.style.display='none';
@@ -2696,7 +2815,7 @@ function renderLog(){
     row.innerHTML='<span style="font-size:14px;font-weight:600;color:#555;">Set'+st.order+'</span>'
       +'<span style="font-size:15px;">'+esc(setDesc(S.part,st))+' '+esc(memo)+plan+'</span>'
       +'<span><span style="font-size:16px;color:'+(st.achieved?'#22c55e':'#ef4444')+';">'+(st.achieved?'✓':'✗')+'</span>'
-      +(ref?'<span class="log-actions"><button class="mini-btn" onclick="event.stopPropagation();openSetEdit('+ref.si+','+ref.ei+','+i+',\'set\')">編集</button><button class="mini-btn red" onclick="event.stopPropagation();deleteSetRecord('+ref.si+','+ref.ei+','+i+',\'set\')">削除</button></span>':'')+'</span>';
+      +(ref?'<span class="log-actions"><button class="mini-btn" onclick="event.stopPropagation();openSetEdit('+ref.si+','+ref.ei+','+i+',\'set\')">編集</button><button class="mini-btn red" onclick="event.stopPropagation();deleteSetRecord('+ref.si+','+ref.ei+','+i+',\'set\')">セット削除</button></span>':'')+'</span>';
     lr.appendChild(row);
   }
 }
@@ -2704,8 +2823,13 @@ function currentExerciseRef(){
   var ss=gS();for(var si=0;si<ss.length;si++)for(var ei=0;ei<(ss[si].exercises||[]).length;ei++){var ex=ss[si].exercises[ei];if(ex===S.exE||(ex.part===S.part&&(ex.name===S.ex||ex.parent_name===S.ex)&&ss[si].date===toDay()))return{si:si,ei:ei};}
   return null;
 }
-function aw(d){S.w=Math.max(0,parseFloat((S.w+d).toFixed(1)));document.getElementById('wv').textContent=fmt(S.w);var pc=document.getElementById('prev-compare');if(pc&&S.exE)pc.innerHTML=prevSetCompareHtml(S.part,S.ex,(S.exE.sets||[]).length+1,S.w,S.r);}
-function ar(d){S.r=Math.max(1,S.r+d);document.getElementById('rv').textContent=S.r;var pc=document.getElementById('prev-compare');if(pc&&S.exE)pc.innerHTML=prevSetCompareHtml(S.part,S.ex,(S.exE.sets||[]).length+1,S.w,S.r);}
+function updateSetPreview(){
+  var pc=document.getElementById('prev-compare');
+  if(pc&&S.exE)pc.innerHTML=prevSetCompareHtml(S.part,S.ex,(S.exE.sets||[]).length+1,S.w,S.r);
+  renderSetScope();
+}
+function aw(d){S.w=Math.max(0,parseFloat((S.w+d).toFixed(1)));document.getElementById('wv').textContent=fmt(S.w);updateSetPreview();}
+function ar(d){S.r=Math.max(1,S.r+d);document.getElementById('rv').textContent=S.r;updateSetPreview();}
 function bindSetNumberInputs(){
   dbg('bindSetNumberInputs called');
   dbg('button touch-action applied');
@@ -2726,13 +2850,70 @@ function adjSetRest(d){
   S.restOvr={part:S.part,name:S.ex,order:ord,sec:sec};setDayInterval(S.part,S.ex,sec);
   var rv=document.getElementById('set-rest-val');if(rv)rv.textContent=secLbl(sec);var si=document.getElementById('s-int');if(si)si.textContent=secLbl(sec);
 }
+function setTargets(set){
+  return {
+    weight:parseFloat(set.weight_kg)||0,
+    reps:Math.max(1,parseInt(set.planned_reps||set.reps,10)||10)
+  };
+}
+function previousStrengthSets(part,name){
+  var entry=getPrevExerciseEntry(part,parentName(part,name));
+  return entry?expandPrevSets(entry.ex):[];
+}
+// 選択は当日・同じ種目でだけ解釈する。前回の記録は実施した順番のまま参照する。
+function nextStrengthPlan(part,name,todaySets,previous){
+  previous=previous||previousStrengthSets(part,name);
+  if(!previous.length){
+    for(var i=todaySets.length-1;i>=0;i--){
+      if(todaySets[i].nextSetRule==='previous')break;
+      if(todaySets[i].nextSetRule!=='once')return setTargets(todaySets[i]);
+    }
+    var initial=getPrevAny(part,name);
+    return {weight:initial.w||0,reps:initial.r||10};
+  }
+  function previousAt(index){return setTargets(previous[Math.min(index,previous.length-1)]);}
+  var next=previousAt(todaySets.length),carryWeight=null,carryReps=null;
+  todaySets.forEach(function(set,index){
+    if(set.nextSetRule==='previous'){carryWeight=null;carryReps=null;return;}
+    if(set.nextSetRule==='once')return;
+    var today=setTargets(set),baseline=previousAt(index);
+    if(carryWeight!==null||today.weight!==baseline.weight)carryWeight=today.weight;
+    if(carryReps!==null||today.reps!==baseline.reps)carryReps=today.reps;
+  });
+  if(carryWeight!==null)next.weight=carryWeight;
+  if(carryReps!==null)next.reps=carryReps;
+  return next;
+}
+function toggleSetOnly(){S.onlyThisSet=!S.onlyThisSet;renderSetScope();}
+function renderSetScope(){
+  var scope=document.getElementById('set-scope');
+  scope.style.display=isStrengthPart(S.part)?'':'none';
+  if(!isStrengthPart(S.part)||!S.exE)return;
+  var input={weight_kg:S.w,planned_reps:S.r,nextSetRule:S.onlyThisSet?'once':null};
+  var plan=nextStrengthPlan(S.part,S.ex,(S.exE.sets||[]).concat([input]),S.scopePrevious);
+  document.getElementById('set-only').setAttribute('aria-pressed',String(S.onlyThisSet));
+  document.getElementById('scope-preview').textContent='次セット予定　'+fmt(plan.weight)+'kg × '+plan.reps+'回';
+}
 function prepareNextDraft(set){
   if(!set)return;
-  var vr=set.variation||set.memo||S.vari||'標準';
-  var nx=prevSetForOrder(S.part,S.ex,(parseInt(set.order,10)||0)+1);/*前回の対応セットを次セットの初期値に使う*/
-  if(nx)S.nextDraft={weight:parseFloat(nx.weight_kg)||0,reps:Math.max(1,parseInt(nx.planned_reps||nx.reps,10)||1),variation:vr};
-  else S.nextDraft={weight:parseFloat(set.weight_kg)||0,reps:Math.max(1,parseInt(set.planned_reps||set.reps||S.r,10)||1),variation:vr};
+  var previous=previousStrengthSets(S.part,S.ex);
+  document.getElementById('draft-previous').hidden=!previous.length;
+  S.nextDraft=nextStrengthPlan(S.part,S.ex,S.exE.sets,previous);
+  S.nextDraft.variation=set.variation||set.memo||S.vari||'標準';
   renderNextDraft();
+}
+function resumePreviousPlan(){
+  if(activeScreenId()!=='si'||S.tGoTo)return;
+  var ref=currentIntervalRef();
+  if(!ref||!previousStrengthSets(S.part,S.ex).length)return;
+  var session=ref.sessions[ref.si],ex=session.exercises[ref.ei],last=ex.sets[ex.sets.length-1];
+  if(last.nextSetRule!=='previous'){
+    last.nextSetRule='previous';last.updatedAt=new Date().toISOString();
+    if(!pS(ref.sessions))return;
+  }
+  S.sess=session;S.exE=ex;
+  prepareNextDraft(last);
+  showToast('次のセットから前回の重量・予定回数に戻ります','info');
 }
 function renderNextDraft(){
   var card=document.getElementById('next-draft-card');if(!card)return;
@@ -2882,8 +3063,10 @@ function saveStrengthSetDirect(ach,actualReps){
   var bestBefore=canPr?bestForNames(S.part,aliasesFor(S.part,S.ex)):0;
   var savedSet={id:uid(),updatedAt:new Date().toISOString(),order:ex.sets.length+1,part:S.part,exercise:S.ex,weight_kg:S.w,reps:ach?actualReps:S.r,actualReps:ach?null:actualReps,actual_reps:ach?null:actualReps,planned_reps:S.r,achieved:ach,pr_updated:!!(canPr&&Number(S.w)>Number(bestBefore||0)),rest_seconds:0,post_interval_elapsed_sec:S.lastPostWait||0,
     memo:S.vari!=='標準'?S.vari:'',variation:S.vari,parent_name:S.ex,original_name:S.origEx||S.ex,performed_at:new Date().toISOString()};
+  if(S.onlyThisSet)savedSet.nextSetRule='once';
   ex.sets.push(savedSet);
   if(!pS(ss)){dbg('direct set NOT saved: storage write failed');return null;}
+  S.onlyThisSet=false;
   S.sess=ss[si];S.exE=ex;
   dbg('direct set saved order='+savedSet.order);
   if(ach)chkPR(S.part,S.ex,S.w,bestBefore);
@@ -3034,8 +3217,10 @@ function saveSet(ach,actualReps){
   var bestBefore=canPr?bestForNames(S.part,aliasesFor(S.part,S.ex)):0;
   var savedSet={id:uid(),updatedAt:new Date().toISOString(),order:sets.length+1,part:S.part,exercise:S.ex,weight_kg:S.w,reps:ach?actualReps:S.r,actualReps:ach?null:actualReps,actual_reps:ach?null:actualReps,planned_reps:S.r,achieved:ach,pr_updated:!!(canPr&&Number(S.w)>Number(bestBefore||0)),rest_seconds:0,post_interval_elapsed_sec:S.lastPostWait||0,
     memo:S.vari!=='標準'?S.vari:'',variation:S.vari,parent_name:S.ex,original_name:S.origEx||S.ex,performed_at:new Date().toISOString()};
+  if(S.onlyThisSet&&isStrengthPart(S.part))savedSet.nextSetRule='once';
   sets.push(savedSet);
   if(!pS(ss)){dbg('set NOT saved: storage write failed');return;}
+  S.onlyThisSet=false;
   dbg('set saved order='+(sets.length));S.exE=ss[si].exercises[ei];S.sess=ss[si];
   if(ach)chkPR(S.part,S.ex,S.w,bestBefore);
   beep(660,0.15);afterStrengthSetSaved(savedSet);
@@ -3385,7 +3570,7 @@ function nextSet(auto){
   goNextStrengthSetAfterInterval(auto);
 }
 function anyModalOpen(){
-  var ids=['fail-md','rec-md','edit-md','add-md','nm'];
+  var ids=['fail-md','rec-md','edit-md','add-md','variation-md','nm'];
   for(var i=0;i<ids.length;i++){var el=document.getElementById(ids[i]);if(el&&el.classList&&el.classList.contains('on'))return true;}
   return false;
 }
@@ -3412,10 +3597,11 @@ function returnToInterval(si,ei){
   dbg('returned to interval after record mutation');
 }
 function returnToSetAfterIntervalDelete(si,ei){
-  stopTimer();S.nextDraft=null;S.tPau=false;S.tBp=false;
+  S.onlyThisSet=false;stopTimer();S.nextDraft=null;S.tPau=false;S.tBp=false;
   var ss=gS(),ex=ss[si]&&ss[si].exercises&&ss[si].exercises[ei];
   if(ex){
     S.sess=ss[si]||S.sess;S.part=ex.part||S.part;S.ex=ex.parent_name||ex.name||S.ex;S.exE=ex;
+    var plan=nextStrengthPlan(S.part,S.ex,ex.sets||[]);S.w=plan.weight;S.r=plan.reps;
     renderSet();show('sset');bindStrengthActionButtons();bindSetNumberInputs();
   }else{
     S.exE=null;goEx();
@@ -3551,7 +3737,7 @@ function openNum(t){
   dbg('zoom css applied');
   var ctx=(t==='w'||t==='r')?'set':((t==='dw'||t==='dr')?'draft':(t==='f'?'fail':'other'));
   dbg('openNumberModal target='+t+' context='+ctx);
-  S.numStr=t==='w'?fmt(S.w):(t==='f'?String(S.failR):(t==='dw'?fmt((S.nextDraft&&S.nextDraft.weight)||S.w):(t==='dr'?String((S.nextDraft&&S.nextDraft.reps)||S.r):String(S.r))));
+  S.numStr=t==='w'?fmt(S.w):(t==='f'?String(S.failR):(t==='dw'?fmt(S.nextDraft?S.nextDraft.weight:S.w):(t==='dr'?String((S.nextDraft&&S.nextDraft.reps)||S.r):String(S.r))));
   document.getElementById('nm-tt').textContent=t==='w'?'重量 (kg)':(t==='dw'?'次セット重量 (kg)':(t==='dr'?'次セットレップ':(t==='f'?'実回数':'レップ数')));
   document.getElementById('nm-dsp').textContent=S.numStr;
   var n=document.getElementById('nm');
@@ -3571,7 +3757,7 @@ function nc(){
   else if(S.numT==='dr'){if(!S.nextDraft)S.nextDraft={weight:S.w||0,reps:S.r||10,variation:S.vari||'標準'};S.nextDraft.reps=Math.max(1,Math.round(v));renderNextDraft();dbg('reps input saved='+S.nextDraft.reps);}
   else if(S.numT==='f'){S.failR=Math.max(1,Math.round(v));syncFailInput();dbg('fail actualReps changed='+S.failR);}
   else{S.r=Math.max(1,Math.round(v));document.getElementById('rv').textContent=S.r;dbg('reps input saved='+S.r);}
-  var pc=document.getElementById('prev-compare');if(pc&&S.exE)pc.innerHTML=prevSetCompareHtml(S.part,S.ex,(S.exE.sets||[]).length+1,S.w,S.r);
+  if(S.numT==='w'||S.numT==='r')updateSetPreview();
   if(activeScreenId()==='si')renderIntervalSetList();
   dbg('number input saved value='+v+' target='+S.numT);
   S.numSaved=true;
@@ -3595,7 +3781,7 @@ function showToday(){
     for(var j=0;j<parts[part].length;j++){
       var ref=parts[part][j],ex=ref.ex,todaySi=findSessionIndex(s.id,s.date),todayEi=ref.index;
       var html='<div class="today-ex"><div class="today-ex-name"><span>'+esc(ex.parent_name||ex.name)+'</span><span class="row-actions"><button class="mini-btn" onclick="'+(ex.type==='walking'||ex.cardio?'openWalkEdit('+todaySi+','+todayEi+',\'today\')':'selEx(\''+escJS(ex.part)+'\',\''+escJS(ex.parent_name||ex.name)+'\')')+'">'+(ex.type==='walking'||ex.cardio?'編集':'セット追加')+'</button>'
-        +(ex.type==='walking'||ex.cardio?'<button class="mini-btn red" onclick="deleteWalkRecord('+todaySi+','+todayEi+',\'today\')">削除</button>':'<button class="mini-btn" onclick="showHistExercise(\''+escJS(ex.part)+'\',\''+escJS(ex.parent_name||ex.name)+'\')">履歴</button><button class="mini-btn red" onclick="deleteExerciseRecord('+todaySi+','+todayEi+',\'today\')">種目削除</button>')+'</span></div>';
+        +(ex.type==='walking'||ex.cardio?'<button class="mini-btn red" onclick="deleteWalkRecord('+todaySi+','+todayEi+',\'today\')">歩行記録を削除</button>':'<button class="mini-btn" onclick="showHistExercise(\''+escJS(ex.part)+'\',\''+escJS(ex.parent_name||ex.name)+'\')">履歴</button><button class="mini-btn red" onclick="deleteExerciseRecord('+todaySi+','+todayEi+',\'today\')">今日の全'+(ex.sets||[]).length+'セットを削除</button>')+'</span></div>';
       if(ex.type==='walking'||ex.cardio){
         html+=walkTodayHtml(ex.cardio||{});
         html+='</div>';box.innerHTML+=html;continue;
@@ -3603,7 +3789,7 @@ function showToday(){
       for(var k=0;k<(ex.sets||[]).length;k++){
         var st=ex.sets[k],v=st.variation||st.memo||'標準',mark=st.achieved?'✓':'✗';
         html+='<div class="today-set" style="cursor:pointer"><div>'+st.order+'set</div><div onclick="openSetEdit('+todaySi+','+todayEi+','+k+',\'today\')">'+esc(setDesc(ex.part,st))+' '+esc(v)+'</div><div style="color:'+(st.achieved?'#22c55e':'#ef4444')+'">'+mark+'</div>'
-          +'<div class="row-actions" style="grid-column:1/-1"><button class="mini-btn" onclick="openSetEdit('+todaySi+','+todayEi+','+k+',\'today\')">編集</button><button class="mini-btn red" onclick="deleteSetRecord('+todaySi+','+todayEi+','+k+',\'today\')">削除</button></div></div>';
+          +'<div class="row-actions" style="grid-column:1/-1"><button class="mini-btn" onclick="openSetEdit('+todaySi+','+todayEi+','+k+',\'today\')">編集</button><button class="mini-btn red" onclick="deleteSetRecord('+todaySi+','+todayEi+','+k+',\'today\')">セット削除</button></div></div>';
       }
       html+='</div>';box.innerHTML+=html;
     }
@@ -3614,8 +3800,8 @@ function showToday(){
 }
 function resetTodaySession(){
   var ss=gS(),td=toDay(),si=-1;for(var i=0;i<ss.length;i++)if(ss[i]&&ss[i].date===td){si=i;break;}if(si<0){showToast('今日の記録はありません','info');return;}
-  if(!confirm('今日のトレーニング記録をすべて削除し、未実施に戻しますか？'))return;
-  if(!confirm('本当に削除しますか？'))return;
+  if(!confirm(td+' の全種目のトレーニング記録を削除し、未実施に戻しますか？　種目メニューと日別メモは残ります。'))return;
+  if(!confirm(td+' の全種目の記録を削除します。この操作を確定しますか？'))return;
   if(S.tIv||S.tAutoTo)stopTimer();if(S.postActive)stopPostIntervalStopwatch();if(S.wk||S.wkIv)clearActiveWalkingSession();
   ss.splice(si,1);
   if(!pS(ss))return;
@@ -3655,8 +3841,7 @@ function openEdit(part,name){
   document.getElementById('ed-o').value=p.order!==undefined?p.order:0;
   document.getElementById('ed-hide').textContent=S.editHidden?'非表示中':'表示中';
   document.getElementById('ed-pin').textContent=S.editPinned?'上に固定':'固定なし';
-  document.getElementById('ed-vars').value=getVariants(part,name).join(', ');
-  renderVarTags('ed');
+  beginVariationEditor('ed',part,getVariants(part,name));
   document.getElementById('ed-del').style.display=isCustom(part,name)?'block':'none';
   document.getElementById('edit-md').classList.add('on');
   dbg('edit modal opened');
@@ -3674,8 +3859,8 @@ function saveEdit(){
     order:intOr(document.getElementById('ed-o').value,0),
     hidden:S.editHidden,pinned:S.editPinned};
   if(Number(document.getElementById('ed-i').value)===S.editIntervalInitial)delete p.interval;
-  var vars=parseVarsInput(document.getElementById('ed-vars').value);
-  if(vars.length&&vars.indexOf('標準')<0)vars.unshift('標準');
+  if(!applyVariationName('ed'))return;
+  var vars=variationEditors.ed.names;
   if(vars.length){p.vars=vars;dbg('variationOptions updated name='+name);}
   if(S.editHidden)dbg('hideExercise name='+name);
   if(newName&&newName!==name&&isCustom(part,name)){
@@ -3704,14 +3889,15 @@ function saveEdit(){
 function deleteCustomEx(){
   var part=S.editPart,name=S.editName;
   if(!isCustom(part,name)){alert('既存マスタ由来の種目は削除せず、非表示にしてください');return;}
-  if(!confirm('追加した種目「'+name+'」を削除しますか？'))return;
-  if(!confirm('本当に削除しますか？ 過去の記録は残ります。'))return;
+  var label='「'+dispName(part,name)+'」';
+  if(!confirm(label+'を種目メニューから外しますか？　トレーニング記録は残ります。'))return;
+  if(!confirm(label+'の追加登録とバリエーションなどの種目設定を解除します。メニューから外しますか？'))return;
   dbg('deleteCustomExercise name='+name);
   var ue=gU(),l=ue[part]||[];ue[part]=l.filter(function(e){return e.name!==name;});
   var em=gEM();delete em[prefKey(part,name)];
   if(!saveStorageBatch({ue:ue,em:em}))return;
   closeEdit();renderExList(part);
-  showToast('追加種目を削除しました','success');
+  showToast('種目メニューから外しました','success');
 }
 
 // =====================================================
@@ -3873,7 +4059,7 @@ function openDailyDetail(date){
   dbg('openDailyDetail date='+date);S.histDate=date;var ss=gS(),si=-1,s=null;for(var i=0;i<ss.length;i++)if(ss[i].date===date){si=i;s=ss[i];break;}var bd=document.getElementById('hist-bd'),d=summaryDataForDate(date);
   dbg('calcDailyVolume date='+date+' volume='+(d.volume||0));
   var hrs=d.walking.hrs,avg=hrs.length?Math.round(hrs.reduce(function(a,b){return a+b;},0)/hrs.length):null,max=hrs.length?Math.max.apply(null,hrs):null;
-  bd.innerHTML=histTabs('daily')+'<div class="daily-detail-head"><button class="mini-btn" onclick="showHistDaily()">← 日別一覧</button><div class="daily-detail-title">'+esc(dateDisp(date))+'</div><div class="volume-big"><div class="k">TOTAL VOLUME</div><div class="v">'+fmtKg(d.volume||0)+'</div></div><button class="wide-btn red" style="margin-top:14px" onclick="deleteDayRecord(\''+escJS(date)+'\')">この日の記録をすべて削除</button></div>'
+  bd.innerHTML=histTabs('daily')+'<div class="daily-detail-head"><button class="mini-btn" onclick="showHistDaily()">← 日別一覧</button><div class="daily-detail-title">'+esc(dateDisp(date))+'</div><div class="volume-big"><div class="k">TOTAL VOLUME</div><div class="v">'+fmtKg(d.volume||0)+'</div></div><button class="wide-btn red" style="margin-top:14px" onclick="deleteDayRecord(\''+escJS(date)+'\')">この日の全記録・メモを削除</button></div>'
     +'<div class="summary-grid2"><div class="summary-box"><div class="k">筋トレ</div><div class="v">'+d.sets+'<small>set</small></div></div><div class="summary-box"><div class="k">種目数</div><div class="v">'+d.exerciseCount+'</div></div><div class="summary-box"><div class="k">達成</div><div class="v">'+d.achieved+'</div></div><div class="summary-box"><div class="k">未達</div><div class="v">'+d.failed+'</div></div><div class="summary-box"><div class="k">歩行時間</div><div class="v">'+d.walking.min+'<small>分</small></div></div><div class="summary-box"><div class="k">距離</div><div class="v">'+fmt2(d.walking.km)+'<small>km</small></div></div></div>'
     +'<div class="summary-section"><div class="summary-title">部位別まとめ</div>'+dailyPartSummary(d)+'</div><div class="summary-section"><div class="summary-title">種目別詳細</div><div id="daily-ex-detail"></div></div>'
     +'<div class="summary-section"><div class="summary-title">ウォーキング</div>'+summaryLine('回数',d.walking.count+'回')+summaryLine('合計時間',d.walking.min+'分')+summaryLine('距離',fmt2(d.walking.km)+'km')+summaryLine('消費',d.walking.cal+'kcal')+summaryLine('心拍',hrs.length?'平均 '+avg+' / 最大 '+max:'未記録')+'</div>';
@@ -3882,9 +4068,9 @@ function openDailyDetail(date){
   if(!liveRefs.length&&!legacy.length){wrap.innerHTML='<div class="hist-row"><div class="hist-row-title">記録なし</div></div>';show('shist');return;}
   for(var ri=0;ri<liveRefs.length;ri++){
     var ex=liveRefs[ri].ex,ei=liveRefs[ri].index;
-    if(ex.type==='walking'||ex.cardio){var row=document.createElement('div');row.className='hist-row';row.innerHTML='<div class="hist-row-title">有酸素 / '+esc(ex.parent_name||ex.name||'ウォーキング')+'</div><div class="hist-row-sub">編集できます</div><div class="row-actions"><button class="mini-btn" onclick="openWalkEdit('+si+','+ei+',\'daily:'+date+'\')">編集</button><button class="mini-btn red" onclick="deleteWalkRecord('+si+','+ei+',\'daily:'+date+'\')">削除</button></div>';wrap.appendChild(row);continue;}
+    if(ex.type==='walking'||ex.cardio){var row=document.createElement('div');row.className='hist-row';row.innerHTML='<div class="hist-row-title">有酸素 / '+esc(ex.parent_name||ex.name||'ウォーキング')+'</div><div class="hist-row-sub">編集できます</div><div class="row-actions"><button class="mini-btn" onclick="openWalkEdit('+si+','+ei+',\'daily:'+date+'\')">編集</button><button class="mini-btn red" onclick="deleteWalkRecord('+si+','+ei+',\'daily:'+date+'\')">歩行記録を削除</button></div>';wrap.appendChild(row);continue;}
     var box=document.createElement('div');box.className='hist-row';var sets=ex.sets||[],vol=0,body=0,lines='';
-    for(var k=0;k<sets.length;k++){var st=sets[k],v=calcSetVolume(st);vol+=v;if(!v)body++;var r=Number(st.actualReps||st.actual_reps||st.reps||0)||0,w=Number(st.weight_kg||0)||0;lines+='<div class="detail-set"><div class="setno">'+(st.order||k+1)+'set</div><div><b>'+esc(setDesc(ex.part,st))+'</b><div class="calc">'+(v?(fmt(w)+'kg × '+r+' = '+fmtKg(v)):'自重・重量未記録')+' / '+esc(st.variation||st.memo||'標準')+'</div></div><div class="detail-actions"><button class="mini-btn" onclick="openSetEdit('+si+','+ei+','+k+',\'daily:'+date+'\')">編集</button><button class="mini-btn red" onclick="deleteSetRecord('+si+','+ei+','+k+',\'daily:'+date+'\')">削除</button></div></div>';}
+    for(var k=0;k<sets.length;k++){var st=sets[k],v=calcSetVolume(st);vol+=v;if(!v)body++;var r=Number(st.actualReps||st.actual_reps||st.reps||0)||0,w=Number(st.weight_kg||0)||0;lines+='<div class="detail-set"><div class="setno">'+(st.order||k+1)+'set</div><div><b>'+esc(setDesc(ex.part,st))+'</b><div class="calc">'+(v?(fmt(w)+'kg × '+r+' = '+fmtKg(v)):'自重・重量未記録')+' / '+esc(st.variation||st.memo||'標準')+'</div></div><div class="detail-actions"><button class="mini-btn" onclick="openSetEdit('+si+','+ei+','+k+',\'daily:'+date+'\')">編集</button><button class="mini-btn red" onclick="deleteSetRecord('+si+','+ei+','+k+',\'daily:'+date+'\')">セット削除</button></div></div>';}
     box.innerHTML='<div class="hist-row-title">'+esc(ex.part)+' / '+esc(ex.parent_name||ex.name)+'</div><div class="hist-row-sub">'+sets.length+'set / 合計 '+fmtKg(vol)+(body?' / 自重・未記録 '+body+'set':'')+'</div>'+lines;wrap.appendChild(box);
   }
   for(var li=0;li<legacy.length;li++){
@@ -3900,8 +4086,8 @@ function deleteDayRecord(date){
   var ss=gS(),hasLive=false;for(var i=0;i<ss.length;i++)if(ss[i]&&ss[i].date===date&&sessionHasTrainingActivity(ss[i])){hasLive=true;break;}
   var hasLegacy=legacyRowsForDate(date).length>0,hasMemo=!!dailyMemo(date);
   if(!hasLive&&!hasLegacy&&!hasMemo){showToast('この日の記録はありません','info');showHistDaily();return;}
-  if(!confirm(dateDisp(date)+' の筋トレ・ウォーキング・メモをすべて削除しますか？'))return;
-  if(!confirm('本当に削除しますか？この操作は元に戻せません。'))return;
+  if(!confirm(date+' の筋トレ・ウォーキング・メモをすべて削除しますか？'))return;
+  if(!confirm(date+' の全記録とメモを削除します。この操作を確定しますか？'))return;
   ss=ss.filter(function(s){return !s||s.date!==date;});
   var cfg=gCFG(),hidden=(cfg.deleted_history_dates||[]).slice();if(hidden.indexOf(date)<0)hidden.push(date);cfg.deleted_history_dates=hidden;if(cfg.daily_memos)delete cfg.daily_memos[date];
   markPrFlags(ss);if(!saveStorageBatch({ts:ss,cfg:cfg}))return;
@@ -3952,9 +4138,9 @@ function showHistExercise(part,name){
 }
 function showHistSets(si,ei){
   var ss=gS(),sess=ss[si],ex=sess&&sess.exercises&&sess.exercises[ei];if(!ex)return;
-  var bd=document.getElementById('hist-bd');bd.innerHTML='<div class="sec-title"><button class="mini-btn" onclick="showHistExercise(\''+escJS(ex.part)+'\',\''+escJS(ex.parent_name||ex.name)+'\')">← 戻る</button> '+esc(sess.date)+' '+esc(ex.parent_name||ex.name)+' <button class="mini-btn red" onclick="deleteExerciseRecord('+si+','+ei+',\'hist\')">種目削除</button></div><div class="hist-list" id="hist-sets"></div>';
+  var bd=document.getElementById('hist-bd');bd.innerHTML='<div class="sec-title"><button class="mini-btn" onclick="showHistExercise(\''+escJS(ex.part)+'\',\''+escJS(ex.parent_name||ex.name)+'\')">← 戻る</button> '+esc(sess.date)+' '+esc(ex.parent_name||ex.name)+' <button class="mini-btn red" onclick="deleteExerciseRecord('+si+','+ei+',\'hist\')">この日の全'+(ex.sets||[]).length+'セットを削除</button></div><div class="hist-list" id="hist-sets"></div>';
   var list=document.getElementById('hist-sets'),sets=ex.sets||[];
-  for(var i=0;i<sets.length;i++){var st=sets[i],r=document.createElement('div');r.className='hist-row';r.innerHTML='<div class="hist-row-title">Set '+(st.order||i+1)+'　'+esc(setDesc(ex.part,st))+'　'+(st.achieved?'✓':'✗')+'</div><div class="hist-row-sub">予定 '+esc(st.planned_reps||'-')+' / '+esc(st.variation||st.memo||'標準')+'</div><div class="row-actions"><button class="mini-btn" onclick="openSetEdit('+si+','+ei+','+i+',\'hist\')">編集</button><button class="mini-btn red" onclick="deleteSetRecord('+si+','+ei+','+i+',\'hist\')">削除</button></div>';r.onclick=(function(k){return function(e){if(e.target.tagName==='BUTTON')return;openSetEdit(si,ei,k);};})(i);list.appendChild(r);}
+  for(var i=0;i<sets.length;i++){var st=sets[i],r=document.createElement('div');r.className='hist-row';r.innerHTML='<div class="hist-row-title">Set '+(st.order||i+1)+'　'+esc(setDesc(ex.part,st))+'　'+(st.achieved?'✓':'✗')+'</div><div class="hist-row-sub">予定 '+esc(st.planned_reps||'-')+' / '+esc(st.variation||st.memo||'標準')+'</div><div class="row-actions"><button class="mini-btn" onclick="openSetEdit('+si+','+ei+','+i+',\'hist\')">編集</button><button class="mini-btn red" onclick="deleteSetRecord('+si+','+ei+','+i+',\'hist\')">セット削除</button></div>';r.onclick=(function(k){return function(e){if(e.target.tagName==='BUTTON')return;openSetEdit(si,ei,k);};})(i);list.appendChild(r);}
   if(!sets.length)list.innerHTML='<div class="hist-row"><div class="hist-row-title">セット記録なし</div></div>';
   show('shist');
 }
@@ -4004,7 +4190,7 @@ function refreshAfterRecordMutation(from,si,ei){
 function deleteSetFromEdit(){var r=S.recRef;if(!r)return;deleteSetRecord(r.si,r.ei,r.ki,r.from||'hist');}
 function deleteSetRecord(si,ei,ki,from){
   var ss=gS(),ex=ss[si]&&ss[si].exercises&&ss[si].exercises[ei];if(!ex||!ex.sets||!ex.sets[ki])return;
-  if(!confirm('このセットを削除しますか？'))return;
+  if(!confirm(ss[si].date+' の「'+dispName(ex.part,ex.parent_name||ex.name)+'」の第'+(ex.sets[ki].order||ki+1)+'セットの記録を削除しますか？'))return;
   var wasInterval=from==='interval';
   ex.sets.splice(ki,1);renumberSets(ex);
   markPrFlags(ss);if(!pS(ss))return;
@@ -4014,9 +4200,9 @@ function deleteSetRecord(si,ei,ki,from){
 }
 function deleteExerciseRecord(si,ei,from){
   var ss=gS(),ex=ss[si]&&ss[si].exercises&&ss[si].exercises[ei];if(!ex)return;
-  var nm=ex.parent_name||ex.name;
-  if(!confirm('今日の'+nm+'の記録をすべて削除します。よろしいですか？'))return;
-  if(!confirm('本当に削除する'))return;
+  var target=ss[si].date+' の「'+dispName(ex.part,ex.parent_name||ex.name)+'」全'+(ex.sets||[]).length+'セット';
+  if(!confirm(target+'の記録を削除しますか？　種目メニューの登録は保持されます。'))return;
+  if(!confirm(target+'の記録を削除します。この操作を確定しますか？'))return;
   var current=S.exE&&S.part===ex.part&&S.ex===(ex.parent_name||ex.name)&&S.sess&&S.sess.date===ss[si].date;
   ss[si].exercises.splice(ei,1);pruneEmptySession(ss,si);markPrFlags(ss);
   if(!pS(ss))return;
@@ -4352,7 +4538,7 @@ function executeImport(mode){
   stopTimer();clearActiveWalkingSession();S.exE=null;S.sess=null;S.nextDraft=null;S.intervalRef=null;
   cancelImport();showToast('インポート完了','success');refreshAfterImport(prev);
 }
-function clrToday(){if(confirm('今日のデータを削除しますか？')){if(!pS(gS().filter(function(s){return s.date!==toDay();})))return;if(S.tIv||S.tAutoTo)stopTimer();if(S.postActive)stopPostIntervalStopwatch();clearActiveWalkingSession();S.exE=null;S.nextDraft=null;updateGlobalElapsed();renderHome();showToast('今日のデータを削除しました','info');showSet2();}}
+function clrToday(){if(confirm(toDay()+' の全種目のトレーニング記録を削除しますか？　種目メニューと日別メモは残ります。')){if(!pS(gS().filter(function(s){return s.date!==toDay();})))return;if(S.tIv||S.tAutoTo)stopTimer();if(S.postActive)stopPostIntervalStopwatch();clearActiveWalkingSession();S.exE=null;S.nextDraft=null;updateGlobalElapsed();renderHome();showToast('今日のトレーニング記録をすべて削除しました','info');showSet2();}}
 
 // =====================================================
 // MODAL BACKDROP
@@ -4394,6 +4580,7 @@ try{
   dbg('button touch-action applied');
   dbg('app initialized');
   goHome();
+  document.getElementById('launch-line').classList.add('arrive');
 }catch(e){
   showE('初期化エラー: '+e.message+'\n'+(e.stack||''));
 }
